@@ -61,11 +61,15 @@ else
   done < "$reseau"
 fi
 
-# 4. The Android unit tests pass (needs JDK 17 and the Android SDK, ANDROID_HOME set).
-if [ -z "${ANDROID_HOME:-}" ] || [ ! -d "$ANDROID_HOME" ]; then
-  echo "gates: ANDROID_HOME is not set to an Android SDK" >&2
+# 4. The Android unit tests pass. JAVA_HOME, ANDROID_HOME and GRADLE_USER_HOME come
+#    from worktree-setup.sh; no Gradle daemon is left running.
+if [ -z "${JAVA_HOME:-}" ] || [ ! -x "$JAVA_HOME/bin/java" ]; then
+  echo "gates: JAVA_HOME is not set to a JDK (eval the output of worktree-setup.sh)" >&2
   status=1
-elif ! ./gradlew test --console=plain; then
+elif [ -z "${ANDROID_HOME:-}" ] || [ ! -d "$ANDROID_HOME" ]; then
+  echo "gates: ANDROID_HOME is not set to an Android SDK (eval the output of worktree-setup.sh)" >&2
+  status=1
+elif ! ./gradlew --no-daemon --console=plain test; then
   echo "gates: ./gradlew test failed" >&2
   status=1
 fi
