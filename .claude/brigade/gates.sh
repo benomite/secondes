@@ -61,8 +61,14 @@ else
   done < "$reseau"
 fi
 
-# The repository holds no code yet: no test suite, type check or lint to run.
-# A ticket that adds a stack adds its checks here.
+# 4. The Android unit tests pass (needs JDK 17 and the Android SDK, ANDROID_HOME set).
+if [ -z "${ANDROID_HOME:-}" ] || [ ! -d "$ANDROID_HOME" ]; then
+  echo "gates: ANDROID_HOME is not set to an Android SDK" >&2
+  status=1
+elif ! ./gradlew test --console=plain; then
+  echo "gates: ./gradlew test failed" >&2
+  status=1
+fi
 
 if [ "$status" -eq 0 ]; then
   echo "gates: green" >&2
