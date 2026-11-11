@@ -1,0 +1,7 @@
+# Sites the project may reach, besides Anthropic and GitHub.
+# One host per line (registry.npmjs.org), `*.` in front for its subdomains,
+# `:port` behind for a port other than 443 and 80, never an address; `#` comments.
+#
+# None today: the repository holds no code, and neither worktree-setup.sh nor
+# gates.sh reaches the network. A ticket that adds a package registry or a
+# service adds its host here.
