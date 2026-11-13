@@ -4,4 +4,6 @@
     <string name="pick_videos">Pick videos</string>
     <string name="picked_count">%d video(s) picked</string>
     <string name="no_date">no capture date</string>
+    <string name="video_unreadable">This video could not be read.</string>
+    <string name="me">Me</string>
 </resources>
