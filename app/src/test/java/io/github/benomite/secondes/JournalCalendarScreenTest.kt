@@ -1,5 +1,7 @@
 package io.github.benomite.secondes
 
+import android.content.ComponentName
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,14 +14,28 @@ import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class JournalCalendarScreenTest {
-    @get:Rule
+    // The release variant's merged manifest lacks the Compose test activity
+    // (ui-test-manifest only reaches debug), so register it before the rule launches it.
+    @get:Rule(order = 0)
+    val registerHostActivity = object : ExternalResource() {
+        override fun before() {
+            val app = RuntimeEnvironment.getApplication()
+            shadowOf(app.packageManager)
+                .addActivityIfNotPresent(ComponentName(app, ComponentActivity::class.java))
+        }
+    }
+
+    @get:Rule(order = 1)
     val rule = createComposeRule()
 
     private val jan1 = LocalDate.of(2026, 1, 1)
