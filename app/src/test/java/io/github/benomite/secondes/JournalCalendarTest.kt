@@ -6,7 +6,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+// ImageBitmap needs a real Bitmap, which a plain JVM test does not have.
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class JournalCalendarTest {
     private val thumb = ImageBitmap(1, 1)
     private fun clip(d: LocalDate) = Clip(d, "Léa", thumb)
