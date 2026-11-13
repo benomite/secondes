@@ -4,6 +4,20 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Release version: taken from the release tag (SECONDES_VERSION env var or Gradle property,
+// "v1.2.0" or "1.2.0"). versionCode = major * 10000 + minor * 100 + patch, so it strictly
+// increases with the version as long as minor and patch stay below 100.
+// Local default when nothing is set: 0.1.0 (versionCode 100).
+fun releaseSetting(name: String): String? =
+    (System.getenv(name) ?: providers.gradleProperty(name).orNull)?.takeIf { it.isNotBlank() }
+
+val versionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
+val rawVersion = releaseSetting("SECONDES_VERSION") ?: "0.1.0"
+val versionMatch = versionRegex.matchEntire(rawVersion.trim())
+    ?: throw GradleException("SECONDES_VERSION must look like v1.2.0 or 1.2.0, got '$rawVersion'")
+val (verMajor, verMinor, verPatch) = versionMatch.destructured.toList().map { it.toInt() }
+require(verMinor < 100 && verPatch < 100) { "minor and patch must be below 100 (got $rawVersion)" }
+
 android {
     namespace = "io.github.benomite.secondes"
     compileSdk = 35
@@ -12,9 +26,36 @@ android {
         applicationId = "io.github.benomite.secondes"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = verMajor * 10000 + verMinor * 100 + verPatch
+        versionName = "$verMajor.$verMinor.$verPatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Signing key, read from env vars or Gradle properties, never from committed files.
+    // When any of the four is missing, no release signing config is created: assembleRelease
+    // still works locally and produces an unsigned APK (app-release-unsigned.apk), and
+    // assembleDebug is unaffected (it always uses the debug keystore).
+    val keystorePath = releaseSetting("SECONDES_KEYSTORE_PATH")
+    val keystorePassword = releaseSetting("SECONDES_KEYSTORE_PASSWORD")
+    val keyAliasName = releaseSetting("SECONDES_KEY_ALIAS")
+    val keyPasswordValue = releaseSetting("SECONDES_KEY_PASSWORD")
+    val canSignRelease = listOf(keystorePath, keystorePassword, keyAliasName, keyPasswordValue).all { it != null }
+
+    signingConfigs {
+        if (canSignRelease) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (canSignRelease) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
