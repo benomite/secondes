@@ -26,7 +26,10 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SecondPickerScreenTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val registerHostActivity = ComposeHostActivityRule()
+
+    @get:Rule(order = 1)
     val rule = createComposeRule()
 
     private val horizontal = VideoInfo(10_000, 1920, 1080)
