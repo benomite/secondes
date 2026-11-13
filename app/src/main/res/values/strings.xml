@@ -15,4 +15,6 @@
         <item quantity="one">%d day is missing</item>
         <item quantity="other">%d days are missing</item>
     </plurals>
+    <string name="video_unreadable">This video could not be read.</string>
+    <string name="me">Me</string>
 </resources>
