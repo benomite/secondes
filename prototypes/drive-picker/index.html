@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>secondes — Drive folder picker prototype</title>
+</head>
+<body>
+  <h1>Drive folder picker (drive.file)</h1>
+  <p>
+    <label>OAuth client ID <input id="client-id" size="60"></label><br>
+    <label>API key <input id="api-key" size="60"></label><br>
+    <label>Project number (App ID) <input id="app-id" size="20"></label><br>
+    <button id="pick" disabled>Pick a Drive folder</button>
+  </p>
+  <pre id="out">Fill the three fields, then pick a folder.</pre>
+
+  <script>
+    // The only scope requested. No restricted scope (drive, drive.readonly).
+    const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+    const out = document.getElementById('out');
+    const show = (text) => { out.textContent = text; };
+    let pickerReady = false;
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('cannot load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function init() {
+      try {
+        await loadScript('https://apis.google.com/js/api.js');
+        await new Promise((resolve, reject) =>
+          gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('picker failed to load')) }));
+        await loadScript('https://accounts.google.com/gsi/client');
+        pickerReady = true;
+        document.getElementById('pick').disabled = false;
+      } catch (e) {
+        show('Google scripts failed to load: ' + e.message);
+      }
+    }
+
+    function requestToken(clientId) {
+      return new Promise((resolve, reject) => {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: SCOPE,
+          callback: (resp) => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
+          error_callback: (err) => reject(new Error(err.type || 'authorization failed')),
+        });
+        client.requestAccessToken();
+      });
+    }
+
+    function openPicker(token, apiKey, appId) {
+      // Folder view with folder selection enabled; folders shared with the user are listed too.
+      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true);
+      new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token)
+        .setDeveloperKey(apiKey)
+        .setAppId(appId)
+        .setCallback((data) => {
+          if (data.action === google.picker.Action.PICKED) {
+            const doc = data.docs[0];
+            show('Folder id:   ' + doc.id + '\nFolder name: ' + doc.name);
+          } else if (data.action === google.picker.Action.CANCEL) {
+            show('Picker cancelled.');
+          }
+        })
+        .build()
+        .setVisible(true);
+    }
+
+    document.getElementById('pick').addEventListener('click', async () => {
+      const clientId = document.getElementById('client-id').value.trim();
+      const apiKey = document.getElementById('api-key').value.trim();
+      const appId = document.getElementById('app-id').value.trim();
+      if (!pickerReady || !clientId || !apiKey || !appId) {
+        show('Client ID, API key and project number are all required.');
+        return;
+      }
+      try {
+        openPicker(await requestToken(clientId), apiKey, appId);
+      } catch (e) {
+        show('Authorization failed: ' + e.message);
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
