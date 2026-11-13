@@ -1,7 +1,8 @@
 package io.github.benomite.secondes
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SecondWindowTest {
@@ -31,9 +32,12 @@ class SecondWindowTest {
     }
 
     @Test
-    fun aVideoShorterThanASecondHoldsNoWindow() {
-        assertNull(secondWindowAt(0, durationMs = 999))
-        assertNull(secondWindowAtFraction(0.5f, durationMs = 999))
+    fun aVideoShorterThanASecondIsKeptWhole() {
+        assertTrue(isShorterThanOneSecond(999))
+        assertFalse(isShorterThanOneSecond(1_000))
+        assertEquals(SecondWindow(0, 999), secondWindowAt(400, durationMs = 999))
+        assertEquals(SecondWindow(0, 600), secondWindowAtFraction(0.5f, durationMs = 600))
+        assertEquals(0f, sliderFraction(SecondWindow(0, 600), durationMs = 600), 0f)
     }
 
     @Test
