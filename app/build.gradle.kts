@@ -49,6 +49,9 @@ dependencies {
     implementation("androidx.media3:media3-effect:$media3")
     implementation("androidx.media3:media3-transformer:$media3")
 
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
