@@ -96,4 +96,21 @@ class ReminderPrefsTest {
         assertNull(parseThreshold("ten"))
         assertNull(parseThreshold("2.5"))
     }
+
+    @Test
+    fun turningOffIsSavedEvenWithAnInvalidThresholdTyped() {
+        val store = FakePrefs()
+        val prefs = ReminderPrefs(store)
+        prefs.save(ReminderSettings(enabled = true, threshold = 6))
+        prefs.save(settingsToSave(enabled = false, threshold = parseThreshold(""), current = prefs.settings()!!))
+        assertEquals(ReminderSettings(enabled = false, threshold = 6), ReminderPrefs(store).settings())
+    }
+
+    @Test
+    fun aValidTypedThresholdReplacesTheCurrentOne() {
+        assertEquals(
+            ReminderSettings(enabled = true, threshold = 3),
+            settingsToSave(enabled = true, threshold = 3, current = ReminderSettings(threshold = 6)),
+        )
+    }
 }

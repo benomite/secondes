@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
@@ -115,8 +116,10 @@ private fun ReminderSettingsScreen(onBack: () -> Unit) {
     val threshold = parseThreshold(thresholdText)
     AskNotificationPermission(enabled && touched)
     LaunchedEffect(enabled, threshold, touched) {
-        if (touched && threshold != null) prefs.save(ReminderSettings(enabled, threshold))
+        // The switch is saved even while the field holds an invalid number: the last valid threshold is kept.
+        if (touched) prefs.save(settingsToSave(enabled, threshold, prefs.settings() ?: saved))
     }
+    BackHandler(onBack = onBack)
 
     Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)

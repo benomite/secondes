@@ -52,3 +52,10 @@ class ReminderPrefs(private val prefs: SharedPreferences) : ReminderStore {
 
 /** The threshold typed in the settings, or null when it is not a whole number of at least one day. */
 fun parseThreshold(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it >= 1 }
+
+/**
+ * What the settings screen saves: the switch as it is, and the typed [threshold], or the [current]
+ * one while the field does not hold a valid number, so turning the reminder off is never lost.
+ */
+fun settingsToSave(enabled: Boolean, threshold: Int?, current: ReminderSettings): ReminderSettings =
+    ReminderSettings(enabled, threshold ?: current.threshold)
