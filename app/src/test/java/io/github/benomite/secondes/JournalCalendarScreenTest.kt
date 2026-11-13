@@ -35,11 +35,11 @@ class JournalCalendarScreenTest {
     fun filledAndEmptyDaysRenderDifferentMarkers() {
         show()
         rule.onNodeWithTag(filledDayTag(jan1)).assertIsDisplayed()
-        rule.onNodeWithTag(thumbnailTag(jan1)).assertIsDisplayed()
+        rule.onNodeWithTag(thumbnailTag(jan1), useUnmergedTree = true).assertIsDisplayed()
         rule.onAllNodesWithTag(emptyDayTag(jan1)).assertCountEquals(0)
         rule.onNodeWithTag(emptyDayTag(jan2)).assertIsDisplayed()
         rule.onAllNodesWithTag(filledDayTag(jan2)).assertCountEquals(0)
-        rule.onAllNodesWithTag(thumbnailTag(jan2)).assertCountEquals(0)
+        rule.onAllNodesWithTag(thumbnailTag(jan2), useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
