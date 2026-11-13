@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="export_title">Film of the year</string>
+    <string name="export_clip_count">Clips: %1$d</string>
+    <string name="export_date_overlay">Show the date on each clip</string>
+    <string name="export_button">Export</string>
+    <string name="export_running">Exporting…</string>
+    <string name="export_done">Film saved to %1$s</string>
+    <string name="export_failed">Export failed: %1$s</string>
+    <string name="export_nothing">No clip to export yet</string>
+</resources>
