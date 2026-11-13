@@ -5,4 +5,15 @@
     <string name="pick_videos">Pick videos</string>
     <string name="picked_count">%d video(s) picked</string>
     <string name="no_date">no capture date</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="reminder_switch">Remind me when the journal falls behind</string>
+    <string name="reminder_threshold">Empty days before the reminder</string>
+    <string name="reminder_threshold_invalid">Enter a whole number of days, 1 or more</string>
+    <string name="behind_channel">Falling behind</string>
+    <string name="behind_title">Your journal is falling behind</string>
+    <plurals name="behind_text">
+        <item quantity="one">%d day is missing</item>
+        <item quantity="other">%d days are missing</item>
+    </plurals>
 </resources>

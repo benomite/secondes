@@ -32,3 +32,24 @@ fun behindReminderDue(
     val empty = missingDays(filled, journalStart, today).size
     return empty.takeIf { it >= settings.threshold }
 }
+
+/**
+ * One run of the daily check: reads [store] and [source], and when a notification is due hands the
+ * number of empty days to [notify]. The send time is recorded only when [notify] says it was posted,
+ * so a refused permission does not use up the week. Returns the number announced, or null.
+ * Unreadable settings, or no journal yet, send nothing.
+ */
+fun runBehindReminderCheck(
+    store: ReminderStore,
+    source: FilledDaysSource,
+    today: LocalDate,
+    now: Instant,
+    notify: (emptyDays: Int) -> Boolean,
+): Int? {
+    val settings = store.settings() ?: return null
+    val start = source.journalStart() ?: return null
+    val empty = behindReminderDue(settings, source.filledDays(), start, today, store.lastSentAt(), now) ?: return null
+    if (!notify(empty)) return null
+    store.recordSent(now)
+    return empty
+}
