@@ -12,11 +12,13 @@ data class DayPick(val videoUri: String, val window: SecondWindow, val thumbnail
 /** The second picker open on [date], over [video]; [window] is the second already chosen, if any. */
 data class SecondPicking(val date: LocalDate, val videoUri: String, val video: VideoInfo, val window: SecondWindow?)
 
-/** The days filled so far and the second picker, when one is open. Kept in memory only. */
+/** The days filled so far, the second picker when one is open, and the import being previewed. Kept in memory only. */
 class DayPicks {
     var picks by mutableStateOf(mapOf<LocalDate, DayPick>())
         private set
     var picking by mutableStateOf<SecondPicking?>(null)
+        private set
+    var importing by mutableStateOf<ImportPlan?>(null)
         private set
 
     /** Opens the picker on [date] over a video; a day already filled from that video reopens on its second. */
@@ -36,6 +38,34 @@ class DayPicks {
         picking = null
     }
 
-    /** The filled days as the calendar shows them. */
-    fun clips(author: String): List<Clip> = picks.map { (date, pick) -> Clip(date, author, pick.thumbnail) }
+    /** Shows the selected videos on the calendar, nothing saved yet; [read] in selection order. */
+    fun startImport(read: List<ImportRead>) {
+        importing = planImport(read, picks.keys)
+    }
+
+    fun chooseForImport(date: LocalDate, choice: DayChoice) {
+        importing = importing?.choose(date, choice)
+    }
+
+    /** Files the previewed videos on their days and ends the preview; does nothing while a choice is missing. */
+    fun confirmImport() {
+        val plan = importing ?: return
+        if (!plan.isResolved) return
+        picks = picks + plan.toSave().mapValues { (_, v) -> DayPick(v.uri, v.window, v.thumbnail) }
+        importing = null
+    }
+
+    /** Ends the preview: the days stay as they were. */
+    fun cancelImport() {
+        importing = null
+    }
+
+    /** The filled days as the calendar shows them; during an import, with the previewed videos on their days. */
+    fun clips(author: String): List<Clip> {
+        val saved = picks.map { (date, pick) -> Clip(date, author, pick.thumbnail) }
+        val plan = importing ?: return saved
+        val previewed = plan.byDay.keys.mapNotNull { date -> plan.shownOn(date)?.let { Clip(date, author, it.thumbnail) } }
+        val replaced = previewed.map { it.date }.toSet()
+        return saved.filter { it.date !in replaced } + previewed
+    }
 }

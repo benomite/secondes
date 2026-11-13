@@ -2,6 +2,7 @@ package io.github.benomite.secondes
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ fun JournalCalendarScreen(
     today: LocalDate,
     onPlay: (Clip) -> Unit,
     onFill: (LocalDate) -> Unit,
+    previewDays: Set<LocalDate> = emptySet(),
 ) {
     val months = calendarMonths(year, clips)
     LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
@@ -57,7 +59,7 @@ fun JournalCalendarScreen(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     week.forEach { day ->
                         Box(modifier = Modifier.weight(1f)) {
-                            if (day != null) DayCell(day, onPlay, onFill)
+                            if (day != null) DayCell(day, day.date in previewDays, onPlay, onFill)
                         }
                     }
                     repeat(7 - week.size) { Box(modifier = Modifier.weight(1f)) }
@@ -68,12 +70,14 @@ fun JournalCalendarScreen(
 }
 
 @Composable
-private fun DayCell(day: CalendarDay, onPlay: (Clip) -> Unit, onFill: (LocalDate) -> Unit) {
+private fun DayCell(day: CalendarDay, previewed: Boolean, onPlay: (Clip) -> Unit, onFill: (LocalDate) -> Unit) {
     val clip = day.clip
     if (clip != null) {
         Column(
             modifier = Modifier
                 .padding(1.dp)
+                // A day an import would fill or change is framed until the import is confirmed or cancelled.
+                .then(if (previewed) Modifier.border(2.dp, MaterialTheme.colorScheme.primary) else Modifier)
                 .testTag(filledDayTag(day.date))
                 .clickable { onPlay(clip) },
         ) {
