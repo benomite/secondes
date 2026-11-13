@@ -2,6 +2,7 @@ package io.github.benomite.secondes
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,8 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
+    private var showSettings by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         BehindReminderWorker.schedule(this)
@@ -50,44 +55,61 @@ class MainActivity : ComponentActivity() {
                     // The reminder is on by default, so the notification permission is asked at launch.
                     val reminderOn = remember { ReminderPrefs.of(this@MainActivity).settings()?.enabled == true }
                     AskNotificationPermission(reminderOn)
-                    var showSettings by remember { mutableStateOf(false) }
                     if (showSettings) {
                         ReminderSettingsScreen(onBack = { showSettings = false })
                     } else {
-                        PickerScreen(onSettings = { showSettings = true })
+                        CalendarScreen(onSettings = { showSettings = true })
                     }
                 }
             }
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // The falling-behind notification's tap leaves the settings for the calendar.
+        if (intent.action == ACTION_OPEN_CALENDAR) showSettings = false
+    }
+
     companion object {
-        /**
-         * The action of the falling-behind notification's tap. Integration point: the calendar screen opens on it
-         * once the calendar is merged; until then the tap opens this activity on its first screen.
-         */
+        /** The action of the falling-behind notification's tap: it opens the calendar screen. */
         const val ACTION_OPEN_CALENDAR = "io.github.benomite.secondes.OPEN_CALENDAR"
     }
 }
 
+/** The video picker above the journal's calendar, with the way into the reminder's settings. */
 @Composable
-private fun PickerScreen(onSettings: () -> Unit) {
+private fun CalendarScreen(onSettings: () -> Unit) {
     val context = LocalContext.current
+    val today = LocalDate.now()
     var videos by remember { mutableStateOf<List<PickedVideo>?>(null) }
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(),
     ) { uris -> videos = toPickedVideos(uris.map { readPickerItem(context, it) }) }
 
-    Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-        Text(stringResource(R.string.placeholder))
-        Button(onClick = {
-            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-        }) { Text(stringResource(R.string.pick_videos)) }
-        TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
-        videos?.let { list ->
-            Text(stringResource(R.string.picked_count, list.size))
-            list.forEach { Text("${it.uri}\n${it.captureDate ?: stringResource(R.string.no_date)}") }
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = {
+                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                }) { Text(stringResource(R.string.pick_videos)) }
+                TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
+            }
+            videos?.let { list ->
+                Text(stringResource(R.string.picked_count, list.size))
+                list.forEach { Text("${it.uri}\n${it.captureDate ?: stringResource(R.string.no_date)}") }
+            }
         }
+        // No clip storage, playback or capture flow exists yet: the calendar is
+        // wired to an empty journal starting today, with no-op taps.
+        JournalCalendarScreen(
+            year = today.year,
+            clips = emptyList(),
+            firstDay = today,
+            today = today,
+            onPlay = {},
+            onFill = {},
+        )
     }
 }
 

@@ -71,7 +71,7 @@ fun postBehindReminder(context: Context, emptyDays: Int): Boolean {
     }
     val open = Intent(context, MainActivity::class.java)
         .setAction(MainActivity.ACTION_OPEN_CALENDAR)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     val tap = PendingIntent.getActivity(
         context,
         0,
