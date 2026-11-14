@@ -18,6 +18,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.benomite.secondes.SecondWindow
 import java.io.File
 import java.time.LocalDate
 import kotlin.coroutines.resume
@@ -49,9 +50,9 @@ class YearExporterTest {
     @Test
     fun theFilmLastsOneSecondPerClipIsVerticalAndHasSound() = runBlocking {
         val clips = listOf(
-            DatedClip(LocalDate.of(2026, 3, 2), source),
-            DatedClip(LocalDate.of(2026, 1, 1), source),
-            DatedClip(LocalDate.of(2026, 1, 5), source),
+            clip(LocalDate.of(2026, 3, 2)),
+            clip(LocalDate.of(2026, 1, 1)),
+            clip(LocalDate.of(2026, 1, 5)),
         )
         val output = File(dir, "film.mp4")
 
@@ -72,7 +73,7 @@ class YearExporterTest {
 
     @Test
     fun theDateIsDrawnOnlyWithTheOverlayOn() = runBlocking {
-        val clips = listOf(DatedClip(LocalDate.of(2026, 1, 1), source))
+        val clips = listOf(clip(LocalDate.of(2026, 1, 1)))
         val withDate = File(dir, "with-date.mp4")
         val withoutDate = File(dir, "without-date.mp4")
 
@@ -82,6 +83,9 @@ class YearExporterTest {
         assertTrue("no text drawn with the overlay on", brightPixelsAtTheBottom(withDate) > 100)
         assertEquals("text drawn with the overlay off", 0, brightPixelsAtTheBottom(withoutDate))
     }
+
+    /** The day [date] filled with the source clip's second from 0.2 s. */
+    private fun clip(date: LocalDate) = DatedClip(date, Uri.fromFile(source).toString(), SecondWindow(200))
 
     /** A 1.5 s vertical clip, plain dark gray, with a (silent) audio track. */
     private suspend fun sourceClip(): File {

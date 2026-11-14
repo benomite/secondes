@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="export_open">Film of the year</string>
     <string name="export_title">Film of the year</string>
-    <string name="export_clip_count">Clips: %1$d</string>
-    <string name="export_date_overlay">Show the date on each clip</string>
+    <string name="export_clip_count">Days with a clip: %1$d</string>
+    <string name="export_date_overlay">Show the date on each second</string>
     <string name="export_button">Export</string>
-    <string name="export_running">Exporting…</string>
-    <string name="export_done">Film saved to %1$s</string>
+    <string name="export_running">Exporting… %1$d%%</string>
+    <string name="export_done">The film is ready: %1$d seconds.</string>
+    <string name="export_left_out">%1$d day(s) filled on another phone could not be read here and are not in the film.</string>
     <string name="export_failed">Export failed: %1$s</string>
-    <string name="export_nothing">No clip to export yet</string>
+    <string name="export_none_readable">None of the %1$d day(s) of this year can be read on this phone.</string>
+    <string name="export_nothing">No day of %1$d has a clip yet.</string>
+    <string name="export_save">Save to the phone</string>
+    <string name="export_share">Share</string>
+    <string name="export_drive">Copy to the journal\'s Drive folder</string>
+    <string name="export_saved">The film is saved in the gallery.</string>
+    <string name="export_save_failed">The film could not be saved to the phone.</string>
+    <string name="export_share_failed">The film could not be shared.</string>
+    <string name="export_drive_done">The film is copied; Drive uploads it to the folder you chose.</string>
+    <string name="export_drive_failed">The film could not be copied to Drive.</string>
 </resources>

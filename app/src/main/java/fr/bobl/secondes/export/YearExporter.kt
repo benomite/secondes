@@ -27,6 +27,7 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import java.io.File
 import kotlin.coroutines.resume
@@ -41,6 +42,8 @@ const val FILM_HEIGHT = 1920
 
 private const val DATE_TEXT_SIZE_PX = 64
 
+private const val PROGRESS_POLL_MS = 250L
+
 /**
  * Turns the dated clips of a year into one vertical film with sound: the clips one after the
  * other in date order, one second each, days without a clip skipped.
@@ -49,16 +52,22 @@ class YearExporter(private val context: Context) {
 
     /**
      * Writes the film of [clips] to [output], replacing it. With [dateOverlay] on, each clip shows
-     * its date. Throws when there is no clip, when a clip file is missing, or when the export fails;
-     * [output] is then removed.
+     * its date. [onProgress] receives the percentage done, on the main thread, while the film is
+     * built. Throws when there is no clip or when the export fails (a video that cannot be read
+     * included); [output] is then removed.
      */
-    suspend fun export(clips: List<DatedClip>, dateOverlay: Boolean, output: File) {
-        checkExportable(clips)
+    suspend fun export(
+        clips: List<DatedClip>,
+        dateOverlay: Boolean,
+        output: File,
+        onProgress: (Int) -> Unit = {},
+    ) {
+        require(clips.isNotEmpty()) { "No clip to export" }
         val composition = yearComposition(planYearFilm(clips, dateOverlay))
         output.parentFile?.mkdirs()
         output.delete()
         try {
-            withContext(Dispatchers.Main) { transform(composition, output) }
+            withContext(Dispatchers.Main) { transform(composition, output, onProgress) }
         } catch (e: Throwable) {
             output.delete()
             throw e
@@ -66,13 +75,18 @@ class YearExporter(private val context: Context) {
     }
 
     // A Transformer is driven from the thread that builds it; Dispatchers.Main has a Looper.
-    private suspend fun transform(composition: Composition, output: File): ExportResult =
+    private suspend fun transform(composition: Composition, output: File, onProgress: (Int) -> Unit): ExportResult =
         suspendCancellableCoroutine { continuation ->
+            val handler = Handler(Looper.myLooper()!!)
+            val progress = ProgressHolder()
+            lateinit var poll: Runnable
             val transformer = Transformer.Builder(context)
                 .setVideoMimeType(MimeTypes.VIDEO_H264)
                 .setAudioMimeType(MimeTypes.AUDIO_AAC)
                 .addListener(object : Transformer.Listener {
                     override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                        handler.removeCallbacks(poll)
+                        onProgress(100)
                         continuation.resume(exportResult)
                     }
 
@@ -81,26 +95,42 @@ class YearExporter(private val context: Context) {
                         exportResult: ExportResult,
                         exportException: ExportException,
                     ) {
+                        handler.removeCallbacks(poll)
                         continuation.resumeWithException(exportException)
                     }
                 })
                 .build()
-            val handler = Handler(Looper.myLooper()!!)
-            continuation.invokeOnCancellation { handler.post { transformer.cancel() } }
+            // The transformer only tells its progress when asked: it is read a few times a second.
+            poll = Runnable {
+                if (transformer.getProgress(progress) == Transformer.PROGRESS_STATE_AVAILABLE) {
+                    onProgress(progress.progress)
+                }
+                handler.postDelayed(poll, PROGRESS_POLL_MS)
+            }
+            continuation.invokeOnCancellation {
+                handler.post {
+                    handler.removeCallbacks(poll)
+                    transformer.cancel()
+                }
+            }
             transformer.start(composition, output.path)
+            handler.postDelayed(poll, PROGRESS_POLL_MS)
         }
 }
 
 /**
- * The composition of the film: one sequence of [plan] clips, each cut to one second and scaled
- * into the vertical frame, with an audio track even if some clips are silent.
+ * The composition of the film: one sequence of [plan] clips, each cut to its chosen second and
+ * scaled into the vertical frame, keeping its sound, with an audio track even if some clips are silent.
  */
 internal fun yearComposition(plan: List<PlannedClip>): Composition {
     val items = plan.map { clip ->
         val mediaItem = MediaItem.Builder()
-            .setUri(Uri.fromFile(clip.file))
+            .setUri(Uri.parse(clip.videoUri))
             .setClippingConfiguration(
-                MediaItem.ClippingConfiguration.Builder().setEndPositionMs(CLIP_DURATION_MS).build(),
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(clip.window.startMs)
+                    .setEndPositionMs(clip.window.endMs)
+                    .build(),
             )
             .build()
         val videoEffects = buildList<Effect> {
