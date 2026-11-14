@@ -3,8 +3,11 @@ package io.github.benomite.secondes
 import androidx.compose.ui.graphics.ImageBitmap
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -34,10 +37,25 @@ class DayPicksTest {
 
         assertNull(days.picking)
         assertEquals(DayPick(uri, SecondWindow(4_000), thumb), days.picks[day])
-        val clip = days.clips("Me").single()
+        val journalDay = JournalDay(day, SharedClip(uri, SecondWindow(4_000)), "Léa", pending = true)
+        val clip = journalClips(listOf(journalDay), days.picks).single()
         assertEquals(day, clip.date)
-        assertEquals("Me", clip.author)
+        assertEquals("Léa", clip.author)
         assertSame(thumb, clip.thumbnail)
+        assertTrue(clip.pending)
+    }
+
+    @Test
+    fun aDayReplacedByAnotherMembersClipDoesNotShowTheThumbnailPickedHere() {
+        val days = DayPicks()
+        days.open(day, uri, video)
+        days.confirm(SecondWindow(4_000), thumb)
+
+        val replaced = JournalDay(day, SharedClip("content://bob/7", SecondWindow(1_000)), "Bob")
+        val clip = journalClips(listOf(replaced), days.picks).single()
+        assertEquals("Bob", clip.author)
+        assertNotSame(thumb, clip.thumbnail)
+        assertFalse(clip.pending)
     }
 
     @Test
@@ -52,7 +70,7 @@ class DayPicksTest {
         val other = ImageBitmap(2, 2)
         days.confirm(SecondWindow(7_500), other)
         assertEquals(DayPick(uri, SecondWindow(7_500), other), days.picks[day])
-        assertEquals(1, days.clips("Me").size)
+        assertEquals(1, days.picks.size)
     }
 
     @Test
