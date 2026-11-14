@@ -13,13 +13,15 @@ data class DayPick(val videoUri: String, val window: SecondWindow, val thumbnail
 data class SecondPicking(val date: LocalDate, val videoUri: String, val video: VideoInfo, val window: SecondWindow?)
 
 /**
- * The seconds picked on this phone, with their thumbnails, and the second picker, when one is open. Kept in
- * memory only: the days themselves are kept by the journal ([JournalSync]).
+ * The seconds picked on this phone, with their thumbnails, the second picker, when one is open, and the import
+ * being previewed. Kept in memory only: the days themselves are kept by the journal ([JournalSync]).
  */
 class DayPicks {
     var picks by mutableStateOf(mapOf<LocalDate, DayPick>())
         private set
     var picking by mutableStateOf<SecondPicking?>(null)
+        private set
+    var importing by mutableStateOf<ImportPlan?>(null)
         private set
 
     /** Opens the picker on [date] over a video; a day already filled from that video reopens on its second. */
@@ -37,6 +39,53 @@ class DayPicks {
 
     fun cancel() {
         picking = null
+    }
+
+    /** Shows the selected videos on the calendar, nothing saved yet; [read] in selection order, [filled] the journal's days. */
+    fun startImport(read: List<ImportRead>, filled: Set<LocalDate>) {
+        importing = planImport(read, filled)
+    }
+
+    fun chooseForImport(date: LocalDate, choice: DayChoice) {
+        importing = importing?.choose(date, choice)
+    }
+
+    /**
+     * Files the previewed videos on their days in [journal], signed [author], and ends the preview. False when a
+     * day could not be saved on the phone; null, with nothing saved and the preview still open, while a choice is missing.
+     */
+    fun confirmImport(journal: JournalSync, author: String): Boolean? {
+        val plan = importing ?: return null
+        if (!plan.isResolved) return null
+        var allSaved = true
+        plan.toSave().forEach { (date, video) ->
+            if (journal.fill(date, SharedClip(video.uri, video.window), author)) {
+                picks = picks + (date to DayPick(video.uri, video.window, video.thumbnail))
+            } else {
+                allSaved = false
+            }
+        }
+        importing = null
+        return allSaved
+    }
+
+    /** Ends the preview: the days stay as they were. */
+    fun cancelImport() {
+        importing = null
+    }
+
+    /**
+     * The journal's [days] as the calendar shows them ([journalClips]); during an import, with the previewed
+     * videos on their days, signed [author].
+     */
+    fun clips(days: Collection<JournalDay>, author: String): List<Clip> {
+        val saved = journalClips(days, picks)
+        val plan = importing ?: return saved
+        val previewed = plan.byDay.keys.mapNotNull { date ->
+            plan.shownOn(date)?.let { Clip(date, author, it.thumbnail) }
+        }
+        val replaced = previewed.map { it.date }.toSet()
+        return saved.filter { it.date !in replaced } + previewed
     }
 }
 

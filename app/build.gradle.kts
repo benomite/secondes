@@ -82,6 +82,25 @@ android {
     }
 }
 
+// Robolectric's Android jar is fetched by Gradle, like any other dependency, and Robolectric reads it offline:
+// otherwise Robolectric downloads it itself into ~/.m2, behind a lock file in the home directory, which a
+// sandboxed build may not write. The version is the one Robolectric 4.14.1 uses for SDK 35 (the targetSdk).
+// For the same reason, the tests' temporary files stay in the build directory.
+val robolectricAndroidAll: Configuration by configurations.creating
+tasks.withType<Test>().configureEach {
+    val androidAll = robolectricAndroidAll
+    inputs.files(androidAll)
+    systemProperty("java.io.tmpdir", temporaryDir.absolutePath)
+    jvmArgumentProviders.add(
+        CommandLineArgumentProvider {
+            listOf(
+                "-Drobolectric.offline=true",
+                "-Drobolectric.dependency.dir=${androidAll.singleFile.parentFile.absolutePath}",
+            )
+        },
+    )
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
@@ -103,6 +122,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
+    robolectricAndroidAll("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

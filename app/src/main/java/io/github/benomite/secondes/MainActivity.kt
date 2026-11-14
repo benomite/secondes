@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import java.io.File
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -78,19 +79,38 @@ class MainActivity : ComponentActivity() {
                     AskNotificationPermission(reminderOn)
 
                     val today = LocalDate.now()
-                    var videos by remember { mutableStateOf<List<PickedVideo>?>(null) }
+                    val scope = rememberCoroutineScope()
+                    var readingImport by remember { mutableStateOf(false) }
+                    // The selected items are read, then shown on the calendar as a preview; nothing is saved yet.
                     val picker = rememberLauncherForActivityResult(
                         ActivityResultContracts.PickMultipleVisualMedia(),
-                    ) { uris -> videos = toPickedVideos(uris.map { readPickerItem(this@MainActivity, it) }) }
+                    ) { uris ->
+                        if (uris.isNotEmpty()) {
+                            readingImport = true
+                            scope.launch {
+                                val zone = ZoneId.systemDefault()
+                                val read = withContext(Dispatchers.IO) {
+                                    uris.mapIndexed { i, uri -> readForImport(this@MainActivity, i + 1, uri, zone) }
+                                }
+                                days.startImport(read, journal.days.value.keys)
+                                readingImport = false
+                            }
+                        }
+                    }
 
-                    val scope = rememberCoroutineScope()
-                    var unreadable by remember { mutableStateOf(false) }
+                    var message by remember { mutableStateOf<Int?>(null) }
 
-                    // Opens the second picker on a day once the video is read; an unreadable video opens nothing and says so.
+                    // Opens the second picker on a day once the video is read; a photo or an unreadable video opens nothing and says so.
                     fun pickSecond(date: LocalDate, videoUri: String) {
                         scope.launch {
-                            val video = withContext(Dispatchers.IO) { readVideoInfo(this@MainActivity, Uri.parse(videoUri)) }
-                            unreadable = video == null
+                            val uri = Uri.parse(videoUri)
+                            val notAVideo = withContext(Dispatchers.IO) { isNotAVideo(mimeTypeOf(this@MainActivity, uri)) }
+                            val video = if (notAVideo) null else withContext(Dispatchers.IO) { readVideoInfo(this@MainActivity, uri) }
+                            message = when {
+                                notAVideo -> R.string.not_a_video
+                                video == null -> R.string.video_unreadable
+                                else -> null
+                            }
                             if (video != null) days.open(date, videoUri, video)
                         }
                     }
@@ -111,11 +131,13 @@ class MainActivity : ComponentActivity() {
                             showSettings = true
                             return
                         }
+                        message = null
                         dayToFill = date
                         pickOne.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                     }
 
                     val picking = days.picking
+                    val importing = days.importing
                     if (showSettings) {
                         // The days picked so far are held by the activity, so a visit to the settings keeps them.
                         ReminderSettingsScreen(onBack = { showSettings = false })
@@ -143,37 +165,72 @@ class MainActivity : ComponentActivity() {
                         )
                     } else {
                         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                            Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Button(onClick = {
-                                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-                                    }) { Text(stringResource(R.string.pick_videos)) }
-                                    TextButton(onClick = { showSettings = true }) { Text(stringResource(R.string.settings)) }
+                            if (importing != null) {
+                                BackHandler { days.cancelImport() }
+                                Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                                    ImportPreviewPanel(
+                                        plan = importing,
+                                        existing = journalClips(journalDays.values, days.picks).associate { it.date to it.thumbnail },
+                                        onChoose = days::chooseForImport,
+                                        onConfirm = {
+                                            // The chosen days are saved here, signed with this member's name, then sent.
+                                            val author = MemberPrefs.of(this@MainActivity).name()
+                                            if (author == null) {
+                                                showSettings = true
+                                            } else {
+                                                val saved = days.confirmImport(journal, author)
+                                                if (saved != null) {
+                                                    notSaved = !saved
+                                                    syncScope.launch { journal.pushPending() }
+                                                }
+                                            }
+                                        },
+                                        onCancel = days::cancelImport,
+                                    )
                                 }
-                                videos?.let { list ->
-                                    Text(stringResource(R.string.picked_count, list.size))
-                                    list.forEach { Text("${it.uri}\n${it.captureDate ?: stringResource(R.string.no_date)}") }
+                            } else {
+                                Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // The system photo picker, restricted to videos: Google Photos' library shows there when it is the phone's cloud media app.
+                                        // A member with no name yet types it first: the imported days are signed with it.
+                                        Button(enabled = !readingImport, onClick = {
+                                            message = null
+                                            if (MemberPrefs.of(this@MainActivity).name() == null) {
+                                                showSettings = true
+                                            } else {
+                                                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                                            }
+                                        }) { Text(stringResource(R.string.import_videos)) }
+                                        TextButton(onClick = { showSettings = true }) { Text(stringResource(R.string.settings)) }
+                                    }
+                                    if (readingImport) Text(stringResource(R.string.import_reading))
+                                    message?.let { Text(stringResource(it)) }
                                 }
-                                if (unreadable) Text(stringResource(R.string.video_unreadable))
-                                if (notSaved) Text(stringResource(R.string.day_not_saved))
                             }
-                            // The journal's days, this member's and the others', each with its author's name.
+                            if (notSaved) Text(stringResource(R.string.day_not_saved))
+                            // The journal's days, this member's and the others', each with its author's name; during
+                            // an import, with the previewed videos on their days.
                             JournalCalendarScreen(
                                 year = today.year,
-                                clips = journalClips(journalDays.values, days.picks),
+                                clips = days.clips(journalDays.values, MemberPrefs.of(this@MainActivity).name().orEmpty()),
                                 firstDay = today,
                                 today = today,
+                                // Not during an import preview: the days are being chosen there.
                                 onPlay = { clip ->
-                                    val day = journalDays[clip.date]
-                                    if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
-                                        // A day of this member's reopens its video, on its second, to choose another one.
-                                        pickSecond(clip.date, day.clip.videoUri)
-                                    } else {
-                                        // A day filled by another member is replaced by a video picked here.
-                                        fillDay(clip.date)
+                                    if (importing == null) {
+                                        val day = journalDays[clip.date]
+                                        if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
+                                            // A day of this member's reopens its video, on its second, to choose another one.
+                                            pickSecond(clip.date, day.clip.videoUri)
+                                        } else {
+                                            // A day filled by another member is replaced by a video picked here.
+                                            fillDay(clip.date)
+                                        }
                                     }
                                 },
-                                onFill = { fillDay(it) },
+                                // An empty day takes the single video picked for it, as the user's explicit choice.
+                                onFill = { if (importing == null) fillDay(it) },
+                                previewDays = importing?.byDay?.keys.orEmpty(),
                             )
                         }
                     }
@@ -294,6 +351,27 @@ private fun ReminderSettingsScreen(onBack: () -> Unit) {
         )
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
+}
+
+/** The MIME type of [uri]; null when the provider does not say it or cannot be asked. */
+private fun mimeTypeOf(context: Context, uri: Uri): String? = try {
+    context.contentResolver.getType(uri)
+} catch (e: Exception) {
+    null
+}
+
+/**
+ * Reads what the import preview needs of one selected item: a photo is not read further; a video gives its
+ * length and size, its shooting day (metadata creation date, else the picker's DATE_TAKEN) and its first frame.
+ */
+private fun readForImport(context: Context, position: Int, uri: Uri, zone: ZoneId): ImportRead {
+    val mimeType = mimeTypeOf(context, uri)
+    if (isNotAVideo(mimeType)) return ImportRead(position, uri.toString(), mimeType, null, null, null)
+    val video = readVideoInfo(context, uri)
+    val captureDate = toPickedVideos(listOf(readPickerItem(context, uri))).single().captureDate
+    val shotOn = shootingDay(readCreationDate(context, uri), captureDate, zone)
+    val thumbnail = if (video != null && shotOn != null) readFrame(context, uri, secondWindowAt(0, video.durationMs).startMs) else null
+    return ImportRead(position, uri.toString(), mimeType, video, shotOn, thumbnail)
 }
 
 /** Reads DATE_TAKEN from the picker URI; a picker that does not expose it, or a failing query, gives no date. */

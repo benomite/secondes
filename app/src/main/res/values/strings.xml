@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">secondes</string>
-    <string name="pick_videos">Pick videos</string>
-    <string name="picked_count">%d video(s) picked</string>
-    <string name="no_date">no capture date</string>
+    <string name="import_videos">Import videos from Google Photos</string>
+    <string name="import_reading">Reading the selected videos…</string>
+    <string name="import_preview">Preview: each video is on the day it was shot. Nothing is saved until you confirm.</string>
+    <string name="import_confirm">Confirm import</string>
+    <string name="import_cancel">Cancel</string>
+    <string name="import_shared_day">%1$s: %2$d selected videos share this day. Choose the one that keeps it; the others are not imported.</string>
+    <string name="import_filled_day">%1$s already has a clip. Keep it or replace it with the selected video.</string>
+    <string name="import_filled_shared_day">%1$s already has a clip, and %2$d selected videos share this day. Keep the clip or choose the video that replaces it; the others are not imported.</string>
+    <string name="import_keep_existing">Keep existing</string>
+    <string name="import_video_n">Video %d</string>
+    <string name="import_choices_missing">Make a choice for every day above to confirm.</string>
+    <string name="import_refused_not_video">Item %d is not a video (a photo?): only videos can be filed on the calendar. It is not imported.</string>
+    <string name="import_refused_unreadable">Video %d could not be read. It is not imported.</string>
+    <string name="import_refused_no_date">Video %d has no shooting date in its metadata. It is not imported.</string>
+    <string name="not_a_video">This is not a video: only videos can be filed on the calendar.</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
     <string name="reminder_switch">Remind me when the journal falls behind</string>

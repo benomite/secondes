@@ -31,6 +31,11 @@ fun readVideoInfo(context: Context, uri: Uri): VideoInfo? = withRetriever(contex
     )
 }
 
+/** The creation date in the metadata of the video at [uri], as written there; null when it is absent or unreadable. */
+fun readCreationDate(context: Context, uri: Uri): String? = withRetriever(context, uri) {
+    it.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)
+}
+
 /** The frame of the video at [uri] closest to [atMs]; null when it cannot be read. */
 fun readFrame(context: Context, uri: Uri, atMs: Long): ImageBitmap? = withRetriever(context, uri) {
     it.getFrameAtTime(atMs * 1_000, MediaMetadataRetriever.OPTION_CLOSEST)?.asImageBitmap()
