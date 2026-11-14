@@ -25,6 +25,7 @@ import java.time.LocalDate
 fun filledDayTag(date: LocalDate) = "day-filled-$date"
 fun emptyDayTag(date: LocalDate) = "day-empty-$date"
 fun thumbnailTag(date: LocalDate) = "thumbnail-$date"
+fun notSentTag(date: LocalDate) = "not-sent-$date"
 const val MISSING_COUNT_TAG = "missing-count"
 
 @Composable
@@ -84,6 +85,14 @@ private fun DayCell(day: CalendarDay, onPlay: (Clip) -> Unit, onFill: (LocalDate
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f).testTag(thumbnailTag(day.date)),
             )
             Text("${day.date.dayOfMonth} · ${clip.author}", style = MaterialTheme.typography.labelSmall)
+            if (clip.pending) {
+                Text(
+                    "Not sent",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag(notSentTag(day.date)),
+                )
+            }
         }
     } else {
         Box(

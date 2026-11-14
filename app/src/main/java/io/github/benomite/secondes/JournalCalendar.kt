@@ -4,8 +4,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import java.time.LocalDate
 import java.time.YearMonth
 
-/** A day's clip: who filled it and its thumbnail. */
-data class Clip(val date: LocalDate, val author: String, val thumbnail: ImageBitmap)
+/** A day's clip: who filled it, its thumbnail, and whether it is still [pending], not sent to the journal yet. */
+data class Clip(val date: LocalDate, val author: String, val thumbnail: ImageBitmap, val pending: Boolean = false)
 
 /** A day of the calendar; [clip] is null when the day is empty. */
 data class CalendarDay(val date: LocalDate, val clip: Clip?)
