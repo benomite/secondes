@@ -1,10 +1,12 @@
 package io.github.benomite.secondes
 
 import androidx.compose.ui.graphics.ImageBitmap
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -176,77 +178,140 @@ class BatchImportTest {
 
     // The import through the days' storage
 
+    /** The phone's journal storage in memory; a failing one cannot save. */
+    private class ImportLocalJournal(var failing: Boolean = false) : LocalJournal {
+        var saved = mapOf<LocalDate, JournalDay>()
+
+        override fun load() = saved
+
+        override fun save(days: Map<LocalDate, JournalDay>) {
+            if (failing) throw IOException("disk full")
+            saved = days
+        }
+    }
+
+    /** No server: the import is saved on the phone first, sending it is the journal's own concern. */
+    private object OfflineJournal : RemoteJournal {
+        override fun fetchDays(): List<JournalDay> = throw IOException("offline")
+
+        override fun pushDay(day: JournalDay): JournalDay = throw IOException("offline")
+    }
+
+    private val local = ImportLocalJournal()
+    private val journal = JournalSync(local, OfflineJournal, Dispatchers.Unconfined)
+    private val oldClip = SharedClip("content://old", SecondWindow(3_000))
+
+    /** Mar 4 already filled by Léa, from this phone, with its thumbnail. */
     private fun filledDays(): DayPicks {
         val days = DayPicks()
-        days.open(mar4, "content://old", video)
-        days.confirm(SecondWindow(3_000), thumbB)
+        days.open(mar4, oldClip.videoUri, video)
+        days.confirm(oldClip.window, thumbB)
+        assertTrue(journal.fill(mar4, oldClip, "Léa"))
         return days
     }
+
+    private fun DayPicks.calendar() = clips(journal.days.value.values, "Léa")
 
     @Test
     fun thePreviewIsOnTheCalendarButNothingIsSavedBeforeConfirming() {
         val days = DayPicks()
-        days.startImport(listOf(read(1, mar5, thumb = thumbA)))
+        days.startImport(listOf(read(1, mar5, thumb = thumbA)), journal.days.value.keys)
 
         assertTrue(days.picks.isEmpty())
-        val clip = days.clips("Me").single()
+        assertTrue(journal.days.value.isEmpty())
+        val clip = days.calendar().single()
         assertEquals(mar5, clip.date)
+        assertEquals("Léa", clip.author)
         assertSame(thumbA, clip.thumbnail)
+    }
+
+    @Test
+    fun aDayFilledInTheJournalIsAFilledDayOfTheImport() {
+        val days = DayPicks()
+        // Filled by another member: no thumbnail here, but the day is filled all the same.
+        journal.fill(mar4, SharedClip("content://bob/7", SecondWindow(1_000)), "Bob")
+        days.startImport(listOf(read(1, mar4)), journal.days.value.keys)
+
+        assertEquals(listOf(mar4), days.importing?.choiceDays)
+        assertEquals("Bob", days.calendar().single().author)
     }
 
     @Test
     fun thePreviewOfAReplacementShowsTheNewVideoOnTheFilledDay() {
         val days = filledDays()
-        days.startImport(listOf(read(1, mar4, thumb = thumbA)))
-        assertSame(thumbB, days.clips("Me").single().thumbnail)
+        days.startImport(listOf(read(1, mar4, thumb = thumbA)), journal.days.value.keys)
+        assertSame(thumbB, days.calendar().single().thumbnail)
 
         days.chooseForImport(mar4, DayChoice.Take("content://v/1"))
-        assertSame(thumbA, days.clips("Me").single().thumbnail)
-        assertEquals("content://old", days.picks[mar4]?.videoUri)
+        assertSame(thumbA, days.calendar().single().thumbnail)
+        assertEquals(oldClip, journal.days.value[mar4]?.clip)
     }
 
     @Test
     fun cancellingTheImportLeavesTheCalendarUnchanged() {
         val days = filledDays()
         val before = days.picks
-        days.startImport(listOf(read(1, mar4), read(2, mar5)))
+        val saved = journal.days.value
+        days.startImport(listOf(read(1, mar4), read(2, mar5)), journal.days.value.keys)
         days.chooseForImport(mar4, DayChoice.Take("content://v/1"))
         days.cancelImport()
 
         assertNull(days.importing)
         assertEquals(before, days.picks)
-        assertEquals(listOf(mar4), days.clips("Me").map { it.date })
-        assertSame(thumbB, days.clips("Me").single().thumbnail)
+        assertEquals(saved, journal.days.value)
+        assertEquals(saved, local.saved)
+        assertEquals(listOf(mar4), days.calendar().map { it.date })
+        assertSame(thumbB, days.calendar().single().thumbnail)
     }
 
     @Test
     fun confirmingFilesTheChosenVideosOnly() {
         val days = DayPicks()
-        days.startImport(listOf(read(1, mar4), read(2, mar4), read(3, mar5)))
-        days.confirmImport()
+        days.startImport(listOf(read(1, mar4), read(2, mar4), read(3, mar5)), journal.days.value.keys)
         // A day still waits for its choice: nothing is saved and the preview stays open.
-        assertTrue(days.picks.isEmpty())
+        assertNull(days.confirmImport(journal, "Léa"))
+        assertTrue(journal.days.value.isEmpty())
         assertNotNull(days.importing)
 
         days.chooseForImport(mar4, DayChoice.Take("content://v/2"))
-        days.confirmImport()
+        assertEquals(true, days.confirmImport(journal, "Léa"))
         assertNull(days.importing)
-        assertEquals(mapOf(mar4 to "content://v/2", mar5 to "content://v/3"), days.picks.mapValues { it.value.videoUri })
-        assertEquals(SecondWindow(0), days.picks[mar4]?.window)
+        val filed = journal.days.value
+        assertEquals(mapOf(mar4 to "content://v/2", mar5 to "content://v/3"), filed.mapValues { it.value.clip.videoUri })
+        assertEquals(SecondWindow(0), filed[mar4]?.clip?.window)
+        assertTrue(filed.values.all { it.author == "Léa" && it.pending })
+        assertEquals(filed, local.saved)
+        // The calendar shows the imported days with the thumbnails read for them.
+        assertEquals(setOf(mar4, mar5), days.calendar().map { it.date }.toSet())
+        assertTrue(days.calendar().all { it.thumbnail === thumbA })
     }
 
     @Test
     fun keepingOrReplacingAFilledDayIsWhatConfirmSaves() {
         val kept = filledDays()
-        kept.startImport(listOf(read(1, mar4)))
+        kept.startImport(listOf(read(1, mar4)), journal.days.value.keys)
         kept.chooseForImport(mar4, DayChoice.KeepExisting)
-        kept.confirmImport()
-        assertEquals(DayPick("content://old", SecondWindow(3_000), thumbB), kept.picks[mar4])
+        assertEquals(true, kept.confirmImport(journal, "Léa"))
+        assertEquals(oldClip, journal.days.value[mar4]?.clip)
+        assertSame(thumbB, kept.calendar().single().thumbnail)
 
         val replaced = filledDays()
-        replaced.startImport(listOf(read(1, mar4, thumb = thumbA)))
+        replaced.startImport(listOf(read(1, mar4, thumb = thumbA)), journal.days.value.keys)
         replaced.chooseForImport(mar4, DayChoice.Take("content://v/1"))
-        replaced.confirmImport()
-        assertEquals(DayPick("content://v/1", SecondWindow(0), thumbA), replaced.picks[mar4])
+        assertEquals(true, replaced.confirmImport(journal, "Léa"))
+        assertEquals(SharedClip("content://v/1", SecondWindow(0)), journal.days.value[mar4]?.clip)
+        assertSame(thumbA, replaced.calendar().single().thumbnail)
+    }
+
+    @Test
+    fun anImportThatCannotBeSavedOnThePhoneSaysSoAndFilesNothing() {
+        val days = DayPicks()
+        days.startImport(listOf(read(1, mar5)), journal.days.value.keys)
+        local.failing = true
+
+        assertEquals(false, days.confirmImport(journal, "Léa"))
+        assertTrue(journal.days.value.isEmpty())
+        assertTrue(days.picks.isEmpty())
+        assertTrue(days.calendar().isEmpty())
     }
 }
