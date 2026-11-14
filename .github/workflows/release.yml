@@ -22,6 +22,10 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.SECONDES_KEYSTORE_BASE64 }}
         run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Repository secret SECONDES_KEYSTORE_BASE64 is missing"
+            exit 1
+          fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/secondes.jks"
 
       - name: Build signed release APK
@@ -32,6 +36,13 @@ jobs:
           SECONDES_KEY_ALIAS: ${{ secrets.SECONDES_KEY_ALIAS }}
           SECONDES_KEY_PASSWORD: ${{ secrets.SECONDES_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
+
+      - name: Verify signature and print APK metadata
+        run: |
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          APK=app/build/outputs/apk/release/app-release.apk
+          "$BT/apksigner" verify --print-certs "$APK"
+          "$BT/aapt" dump badging "$APK" | grep -E "^package:"
 
       - name: Attach APK to the release
         env:
