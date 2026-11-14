@@ -12,3 +12,4 @@ maven.google.com
 # Maven Central
 repo.maven.apache.org
 repo1.maven.org
+gcp.mirrors.maven.org
