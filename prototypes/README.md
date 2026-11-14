@@ -4,7 +4,7 @@ Two small prototypes to settle the two Google integrations the product rests on.
 
 | Prototype | Where | What it does |
 |---|---|---|
-| Photos Picker (Android) | `app/` — `MainActivity.kt` (button, picker call, `DATE_TAKEN` read), `PickedVideo.kt` (picker result → `(uri, captureDate)` record), test `PickedVideoTest.kt` | Opens the system Photo Picker restricted to videos (`PickVisualMediaRequest(VideoOnly)`, multi-select via `PickMultipleVisualMedia`) and lists each selected video's content URI and capture date (or "no capture date"). |
+| Photos Picker (Android) | `app/` — `MainActivity.kt` (button, picker call, `DATE_TAKEN` read), `PickedVideo.kt` (picker result → `(uri, captureDate)` record), test `PickedVideoTest.kt` | Opens the system Photo Picker restricted to videos (`PickVisualMediaRequest(VideoOnly)`, multi-select via `PickMultipleVisualMedia`) and, since #21, shows each selected video on the calendar on the day it was shot (metadata creation date, else `DATE_TAKEN`) as a preview to confirm or cancel. |
 | Drive folder picker (web) | `prototypes/drive-picker/index.html` | Static page, HTML/JS only. Asks for the `drive.file` scope, opens the Google Picker on folders, shows the selected folder id and name. |
 
 ## Scopes and servers — how to check
@@ -46,9 +46,9 @@ grep -rnE 'auth/|https?://' app/src/main prototypes/drive-picker
 
 Account A = the chef, account B = the partner. Fill the results table after each step.
 
-**1. Photos Picker, own library.** On A's phone, open the app, tap *Pick videos*, select several videos at once. Expected: the app lists each video's URI and capture date.
+**1. Photos Picker, own library.** On A's phone, open the app, tap *Import videos from Google Photos*, select several videos at once. Expected: the preview shows each video on the calendar on the day it was shot.
 
-**2. Photos Picker, partner-shared videos.** With Google Photos partner sharing set up from B to A, open the Picker on A's phone, go to the Photos tab, and select videos taken by B (partner-shared). Expected: they are selectable and listed with a URI and a capture date. Note whether the date is present or "no capture date".
+**2. Photos Picker, partner-shared videos.** With Google Photos partner sharing set up from B to A, open the Picker on A's phone, go to the Photos tab, and select videos taken by B (partner-shared). Expected: they are selectable and shown on the day they were shot. Note whether any is refused as having no shooting date in its metadata.
 
 **3. Photos Picker, shared album.** Same, with videos that B put in a shared album A joined. Select several at once, mixing own, partner-shared and album videos.
 
