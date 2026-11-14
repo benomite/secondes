@@ -15,6 +15,11 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The shared journal's server, e.g. -Psecondes.journalBaseUrl=https://example.org/journal.
+        // Empty by default: no server is provisioned yet, so the days filled stay "not sent".
+        val journalBaseUrl = (findProperty("secondes.journalBaseUrl") as String?).orEmpty()
+        buildConfigField("String", "JOURNAL_BASE_URL", "\"${journalBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
     compileOptions {
@@ -28,6 +33,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

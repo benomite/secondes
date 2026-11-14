@@ -3,6 +3,8 @@ package io.github.benomite.secondes
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -31,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,8 +47,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -55,8 +61,14 @@ class MainActivity : ComponentActivity() {
     // Held by the activity, not the composition, so the notification's tap can close an open second picker.
     private val days = DayPicks()
 
+    // The shared journal: kept on the phone first, sent to the server and brought from it outside the screen.
+    private lateinit var journal: JournalSync
+    private val syncScope = MainScope()
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), HttpRemoteJournal(BuildConfig.JOURNAL_BASE_URL))
         BehindReminderWorker.schedule(this)
         setContent {
             MaterialTheme {
@@ -90,6 +102,19 @@ class MainActivity : ComponentActivity() {
                         if (date != null && uri != null) pickSecond(date, uri.toString())
                     }
 
+                    val journalDays by journal.days.collectAsState()
+                    var notSaved by remember { mutableStateOf(false) }
+
+                    // Picks a video for a day, empty or filled by anyone; a member with no name yet types it first.
+                    fun fillDay(date: LocalDate) {
+                        if (MemberPrefs.of(this@MainActivity).name() == null) {
+                            showSettings = true
+                            return
+                        }
+                        dayToFill = date
+                        pickOne.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                    }
+
                     val picking = days.picking
                     if (showSettings) {
                         // The days picked so far are held by the activity, so a visit to the settings keeps them.
@@ -106,6 +131,11 @@ class MainActivity : ComponentActivity() {
                                     }
                                     // A frame that cannot be read leaves a black thumbnail: the day is filled all the same.
                                     days.confirm(window, frame ?: ImageBitmap(1, 1))
+                                    // The day replaces whoever filled it, is saved here, then sent when the server answers.
+                                    val author = MemberPrefs.of(this@MainActivity).name()
+                                    notSaved = author == null ||
+                                        !journal.fill(picking.date, SharedClip(picking.videoUri, window), author)
+                                    if (!notSaved) syncScope.launch { journal.pushPending() }
                                 }
                             },
                             onCancel = days::cancel,
@@ -125,25 +155,56 @@ class MainActivity : ComponentActivity() {
                                     list.forEach { Text("${it.uri}\n${it.captureDate ?: stringResource(R.string.no_date)}") }
                                 }
                                 if (unreadable) Text(stringResource(R.string.video_unreadable))
+                                if (notSaved) Text(stringResource(R.string.day_not_saved))
                             }
-                            // Days are kept in memory only: they are lost when the app is closed.
+                            // The journal's days, this member's and the others', each with its author's name.
                             JournalCalendarScreen(
                                 year = today.year,
-                                clips = days.clips(stringResource(R.string.me)),
+                                clips = journalClips(journalDays.values, days.picks),
                                 firstDay = today,
                                 today = today,
-                                // A filled day reopens its video, on its second, to choose another one.
-                                onPlay = { clip -> days.picks[clip.date]?.let { pickSecond(clip.date, it.videoUri) } },
-                                onFill = { date ->
-                                    dayToFill = date
-                                    pickOne.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                                onPlay = { clip ->
+                                    val day = journalDays[clip.date]
+                                    if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
+                                        // A day of this member's reopens its video, on its second, to choose another one.
+                                        pickSecond(clip.date, day.clip.videoUri)
+                                    } else {
+                                        // A day filled by another member is replaced by a video picked here.
+                                        fillDay(clip.date)
+                                    }
                                 },
+                                onFill = { fillDay(it) },
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Opening the app sends the days filled offline, then brings the other members' days.
+        syncScope.launch { journal.syncOnOpen() }
+        // While the app is open, the network coming back sends the days filled offline.
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                syncScope.launch { journal.pushPending() }
+            }
+        }
+        getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(callback)
+        networkCallback = callback
+    }
+
+    override fun onStop() {
+        networkCallback?.let { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it) }
+        networkCallback = null
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        syncScope.cancel()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -158,6 +219,9 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** The action of the falling-behind notification's tap: it opens the calendar screen. */
         const val ACTION_OPEN_CALENDAR = "io.github.benomite.secondes.OPEN_CALENDAR"
+
+        /** The file, in the app's private files, where the journal's days are kept. */
+        const val JOURNAL_FILE = "journal.json"
     }
 }
 
@@ -191,8 +255,23 @@ private fun ReminderSettingsScreen(onBack: () -> Unit) {
     }
     BackHandler(onBack = onBack)
 
+    val member = remember { MemberPrefs.of(context) }
+    var name by remember { mutableStateOf(member.name().orEmpty()) }
+
     Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)
+        // The name the days filled here are signed with, for the other members of the journal.
+        OutlinedTextField(
+            value = name,
+            onValueChange = {
+                name = it
+                member.save(it)
+            },
+            label = { Text(stringResource(R.string.member_name)) },
+            isError = name.isBlank(),
+            supportingText = { if (name.isBlank()) Text(stringResource(R.string.member_name_missing)) },
+            singleLine = true,
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.reminder_switch), modifier = Modifier.weight(1f))
             Switch(checked = enabled, onCheckedChange = {
