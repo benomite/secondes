@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import fr.bobl.secondes.export.ExportRoute
 import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
+    private var showExport by mutableStateOf(false)
 
     // Held by the activity, not the composition, so the notification's tap can close an open second picker.
     private val days = DayPicks()
@@ -99,6 +101,8 @@ class MainActivity : ComponentActivity() {
                     val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
                         val date = dayToFill
                         dayToFill = null
+                        // The day's video is read again by the film of the year, long after this app has closed.
+                        uri?.let(::keepReadAccess)
                         if (date != null && uri != null) pickSecond(date, uri.toString())
                     }
 
@@ -116,7 +120,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val picking = days.picking
-                    if (showSettings) {
+                    if (showExport) {
+                        ExportRoute(days = journalDays.values, currentYear = today.year, onBack = { showExport = false })
+                    } else if (showSettings) {
                         // The days picked so far are held by the activity, so a visit to the settings keeps them.
                         ReminderSettingsScreen(onBack = { showSettings = false })
                     } else if (picking != null) {
@@ -149,6 +155,7 @@ class MainActivity : ComponentActivity() {
                                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                                     }) { Text(stringResource(R.string.pick_videos)) }
                                     TextButton(onClick = { showSettings = true }) { Text(stringResource(R.string.settings)) }
+                                    TextButton(onClick = { showExport = true }) { Text(stringResource(R.string.export_open)) }
                                 }
                                 videos?.let { list ->
                                     Text(stringResource(R.string.picked_count, list.size))
@@ -207,11 +214,24 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    /**
+     * Keeps the right to read the picked video after the app closes. A picker that grants no lasting access
+     * leaves it as it was: the video then reads until the app closes, and the export leaves its day out, saying so.
+     */
+    private fun keepReadAccess(uri: Uri) {
+        try {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (e: SecurityException) {
+            // No lasting access offered: the video stays readable for as long as the app runs.
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // The falling-behind notification's tap leaves the settings, or the second picker, for the calendar.
         if (intent.action == ACTION_OPEN_CALENDAR) {
             showSettings = false
+            showExport = false
             days.cancel()
         }
     }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The films written by the year export, shared through the system share sheet. -->
+<paths>
+    <files-path name="films" path="exports/" />
+</paths>
