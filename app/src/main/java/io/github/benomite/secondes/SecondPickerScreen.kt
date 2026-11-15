@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -40,7 +39,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import java.util.Locale
 import kotlinx.coroutines.delay
 
 const val VERTICAL_FRAME_TAG = "vertical-frame"
@@ -78,15 +76,15 @@ fun SecondPickerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Choose the second", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.second_title), style = MaterialTheme.typography.titleMedium)
         VerticalFrame(video, Modifier.weight(1f)) { player(window, Modifier.fillMaxSize()) }
         Text(
-            "${seconds(window.startMs)} – ${seconds(window.endMs)}",
+            stringResource(R.string.second_range, seconds(window.startMs), seconds(window.endMs)),
             modifier = Modifier.testTag(SECOND_LABEL_TAG),
         )
         if (short) {
             Text(
-                "This video is shorter than one second: the day will last ${seconds(duration)}.",
+                stringResource(R.string.second_short_video, seconds(duration)),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag(SHORT_VIDEO_NOTE_TAG),
             )
@@ -98,10 +96,8 @@ fun SecondPickerScreen(
             modifier = Modifier.fillMaxWidth().testTag(SECOND_SLIDER_TAG),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onCancel, modifier = Modifier.testTag(CANCEL_SECOND_TAG)) { Text("Cancel") }
-            Button(onClick = { onConfirm(window) }, modifier = Modifier.testTag(CONFIRM_SECOND_TAG)) {
-                Text("Use this second")
-            }
+            SecondaryButton(text = stringResource(R.string.second_cancel), onClick = onCancel, modifier = Modifier.testTag(CANCEL_SECOND_TAG))
+            PrimaryButton(text = stringResource(R.string.second_confirm), onClick = { onConfirm(window) }, modifier = Modifier.testTag(CONFIRM_SECOND_TAG))
         }
     }
 }
@@ -126,7 +122,9 @@ private fun VerticalFrame(video: VideoInfo, modifier: Modifier, content: @Compos
     }
 }
 
-private fun seconds(ms: Long) = String.format(Locale.ROOT, "%.1f s", ms / 1_000.0)
+/** [ms] in seconds, with one decimal, written as the phone's language writes it. */
+@Composable
+private fun seconds(ms: Long) = stringResource(R.string.second_value, ms / 1_000.0)
 
 /**
  * Plays [window] of the video at [videoUri] in a loop, with its sound, filling [modifier]'s space.

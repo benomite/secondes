@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -67,6 +68,13 @@ class JournalCalendarScreenTest {
     fun aDayFilledByAnotherMemberShowsThatMembersName() {
         show()
         rule.onNodeWithText("1 · Léa", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun anAuthorIsShownByTheirFirstName() {
+        rule.setContent { JournalCalendarScreen(2026, listOf(clip.copy(author = "Léa Martin")), jan1, jan2, {}, {}) }
+        rule.onNodeWithText("1 · Léa", useUnmergedTree = true).assertIsDisplayed()
+        rule.onAllNodesWithText("Martin", substring = true, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

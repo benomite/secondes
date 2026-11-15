@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -83,12 +81,13 @@ fun ImportPreviewPanel(
         }
         if (!plan.isResolved) Text(stringResource(R.string.import_choices_missing))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onConfirm, enabled = plan.isResolved, modifier = Modifier.testTag(CONFIRM_IMPORT_TAG)) {
-                Text(stringResource(R.string.import_confirm))
-            }
-            TextButton(onClick = onCancel, modifier = Modifier.testTag(CANCEL_IMPORT_TAG)) {
-                Text(stringResource(R.string.import_cancel))
-            }
+            PrimaryButton(
+                text = stringResource(R.string.import_confirm),
+                onClick = onConfirm,
+                enabled = plan.isResolved,
+                modifier = Modifier.testTag(CONFIRM_IMPORT_TAG),
+            )
+            SecondaryButton(text = stringResource(R.string.import_cancel), onClick = onCancel, modifier = Modifier.testTag(CANCEL_IMPORT_TAG))
         }
     }
 }

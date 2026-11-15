@@ -11,7 +11,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,27 +25,21 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -56,16 +49,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
-
-private val Ink = Color(0xFF1F1B18)
-private val Orange = Color(0xFFE8731E)
-private val Paper = Color(0xFFFFFBF5)
 
 /**
  * The first screen: three polaroids, the app's name and its promise, then Google sign-in; once signed in, the two
@@ -81,7 +69,7 @@ fun WelcomeScreen(
     onJoin: () -> Unit,
 ) {
     // The app draws behind the system bars: the screen keeps its content clear of them.
-    Column(modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(Palette.Paper).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
         Column(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -89,24 +77,18 @@ fun WelcomeScreen(
             Spacer(Modifier.height(24.dp))
             PolaroidStack()
             Spacer(Modifier.height(32.dp))
-            // Young Serif comes with the app's identity (#49); a serif stands in until then.
-            Text(stringResource(R.string.app_name), fontFamily = FontFamily.Serif, fontSize = 48.sp, color = Ink)
+            Text(stringResource(R.string.app_name), fontFamily = YoungSerif, fontSize = 48.sp, color = Palette.Ink)
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.welcome_promise), style = MaterialTheme.typography.bodyLarge, color = Ink)
+            Text(stringResource(R.string.welcome_promise), style = MaterialTheme.typography.bodyLarge, color = Palette.Ink)
             Spacer(Modifier.height(24.dp))
         }
         if (!signedIn) {
-            Button(
-                onClick = onSignIn,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Ink),
-            ) { Text(stringResource(R.string.welcome_sign_in)) }
+            PrimaryButton(text = stringResource(R.string.welcome_sign_in), onClick = onSignIn, enabled = !busy, modifier = Modifier.fillMaxWidth())
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = Orange)
+                Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.ToFill)
                 Spacer(Modifier.size(8.dp))
-                Text(stringResource(R.string.welcome_signed_in), color = Ink)
+                Text(stringResource(R.string.welcome_signed_in), color = Palette.Ink)
             }
             Spacer(Modifier.height(16.dp))
             JournalChoices(busy = busy, onCreate = onCreate, onJoin = onJoin)
@@ -122,24 +104,11 @@ fun WelcomeScreen(
 @Composable
 private fun JournalChoices(busy: Boolean, onCreate: () -> Unit, onJoin: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(
-            onClick = onCreate,
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Ink, contentColor = Color.White),
-        ) {
-            ChoiceLabel(Icons.Filled.Add, Orange, R.string.journal_create, R.string.journal_create_subtitle)
+        PrimaryButton(onClick = onCreate, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            ChoiceLabel(Icons.Filled.Add, Palette.ToFill, R.string.journal_create, R.string.journal_create_subtitle)
         }
-        OutlinedButton(
-            onClick = onJoin,
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.5.dp, SolidColor(Ink)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-        ) {
-            ChoiceLabel(FolderIcon, Ink, R.string.journal_join, R.string.journal_join_subtitle)
+        SecondaryButton(onClick = onJoin, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            ChoiceLabel(FolderIcon, Palette.Ink, R.string.journal_join, R.string.journal_join_subtitle)
         }
     }
 }
@@ -160,31 +129,19 @@ private fun ChoiceLabel(icon: ImageVector, tint: Color, @StringRes title: Int, @
 @Composable
 private fun PolaroidStack() {
     Box(modifier = Modifier.size(200.dp), contentAlignment = Alignment.Center) {
-        Polaroid(Modifier.rotate(-10f).offset(x = (-18).dp)) { Box(Modifier.fillMaxSize().background(Color(0xFFD9CFC2))) }
-        Polaroid(Modifier.rotate(7f).offset(x = 16.dp)) { Box(Modifier.fillMaxSize().background(Color(0xFFBFB2A3))) }
-        Polaroid(Modifier.rotate(-2f), caption = stringResource(R.string.welcome_today)) {
+        Polaroid(0, Modifier.offset(x = (-30).dp, y = (-8).dp).width(120.dp)) { Box(Modifier.fillMaxSize().background(Palette.Muted.copy(alpha = 0.35f))) }
+        Polaroid(1, Modifier.offset(x = 28.dp, y = (-4).dp).width(120.dp)) { Box(Modifier.fillMaxSize().background(Palette.Muted.copy(alpha = 0.6f))) }
+        Polaroid(2, Modifier.offset(y = 6.dp).width(120.dp), caption = stringResource(R.string.welcome_today)) {
             Box(
-                modifier = Modifier.fillMaxSize().drawBehind {
+                modifier = Modifier.fillMaxSize().padding(6.dp).drawBehind {
                     drawRoundRect(
-                        color = Orange,
+                        color = Palette.ToFill,
                         style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f))),
                         cornerRadius = CornerRadius(4.dp.toPx()),
                     )
                 },
                 contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Filled.Add, contentDescription = null, tint = Orange, modifier = Modifier.size(36.dp)) }
-        }
-    }
-}
-
-@Composable
-private fun Polaroid(modifier: Modifier, caption: String? = null, photo: @Composable () -> Unit) {
-    Surface(modifier = modifier.size(width = 120.dp, height = 150.dp), color = Color.White, shadowElevation = 4.dp) {
-        Column(modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) {
-            Box(modifier = Modifier.fillMaxWidth().height(104.dp)) { photo() }
-            if (caption != null) {
-                Text(caption, color = Orange, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-            }
+            ) { Icon(Icons.Filled.Add, contentDescription = null, tint = Palette.ToFill, modifier = Modifier.size(36.dp)) }
         }
     }
 }
@@ -194,18 +151,14 @@ private fun Polaroid(modifier: Modifier, caption: String? = null, photo: @Compos
 fun ShareJournalScreen(journal: StoredJournal, onOpenDrive: () -> Unit, onOpenJournal: () -> Unit) {
     BackHandler(onBack = onOpenJournal)
     Column(
-        modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(Palette.Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.share_title), style = MaterialTheme.typography.headlineSmall, color = Ink)
-        Text(stringResource(R.string.share_folder, journal.name), color = Ink)
-        Text(stringResource(R.string.share_steps), color = Ink)
-        OutlinedButton(onClick = onOpenDrive, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.share_open_drive)) }
-        Button(
-            onClick = onOpenJournal,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Ink),
-        ) { Text(stringResource(R.string.share_open_journal)) }
+        Text(stringResource(R.string.share_title), style = MaterialTheme.typography.headlineSmall, color = Palette.Ink)
+        Text(stringResource(R.string.share_folder, journal.name), color = Palette.Ink)
+        Text(stringResource(R.string.share_steps), color = Palette.Ink)
+        SecondaryButton(text = stringResource(R.string.share_open_drive), onClick = onOpenDrive, modifier = Modifier.fillMaxWidth())
+        PrimaryButton(text = stringResource(R.string.share_open_journal), onClick = onOpenJournal, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -213,11 +166,11 @@ fun ShareJournalScreen(journal: StoredJournal, onOpenDrive: () -> Unit, onOpenJo
 @Composable
 fun AccessLostScreen(journal: StoredJournal, busy: Boolean, @StringRes message: Int?, onJoin: () -> Unit, onCreate: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(Palette.Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.access_lost_title), style = MaterialTheme.typography.headlineSmall, color = Ink)
-        Text(stringResource(R.string.access_lost_text, journal.name), color = Ink)
+        Text(stringResource(R.string.access_lost_title), style = MaterialTheme.typography.headlineSmall, color = Palette.Ink)
+        Text(stringResource(R.string.access_lost_text, journal.name), color = Palette.Ink)
         Spacer(Modifier.height(8.dp))
         JournalChoices(busy = busy, onCreate = onCreate, onJoin = onJoin)
         message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
