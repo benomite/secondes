@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,7 +51,7 @@ val SecondaryButtonBorder = 1.5.dp
 /** The smallest touch target of the app, on both sides. */
 val MinTouchTarget = 44.dp
 
-/** The primary button: ink fill, light text, 56 dp high, 12 dp corners. */
+/** The primary button: ink fill, light text, at least 56 dp high (a two-line label grows it), 12 dp corners. */
 @Composable
 fun PrimaryButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
     Button(
@@ -68,12 +69,13 @@ fun PrimaryButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: B
     )
 }
 
+/** The primary button with a one-line [text]: 56 dp high exactly. */
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    PrimaryButton(onClick = onClick, modifier = modifier, enabled = enabled) { Text(text) }
+    PrimaryButton(onClick = onClick, modifier = modifier.height(PrimaryButtonHeight), enabled = enabled) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 }
 
-/** The secondary button: a 1.5 dp ink outline on a transparent fill, 48 dp high, 12 dp corners. */
+/** The secondary button: a 1.5 dp ink outline on a transparent fill, at least 48 dp high, 12 dp corners. */
 @Composable
 fun SecondaryButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
     OutlinedButton(
@@ -91,9 +93,10 @@ fun SecondaryButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled:
     )
 }
 
+/** The secondary button with a one-line [text]: 48 dp high exactly. */
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    SecondaryButton(onClick = onClick, modifier = modifier, enabled = enabled) { Text(text) }
+    SecondaryButton(onClick = onClick, modifier = modifier.height(SecondaryButtonHeight), enabled = enabled) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 }
 
 /** The polaroid's frame around the photo, on the top and the sides. */

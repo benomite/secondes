@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsEqualTo
@@ -20,10 +19,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.GraphicsMode
 
+// Legacy graphics, as the export screen's test: a screen test in the native graphics sandbox, run before the
+// state-writing DayPicksTest, leaves the calendar and second picker tests of that sandbox never idle.
 @RunWith(RobolectricTestRunner::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ComponentsTest {
     @get:Rule(order = 0)
     val registerHostActivity = ComposeHostActivityRule()
@@ -36,8 +35,8 @@ class ComponentsTest {
         rule.setContent {
             SecondesTheme {
                 Column {
-                    PrimaryButton(onClick = {}, modifier = Modifier.testTag("primary")) { Text("1") }
-                    SecondaryButton(onClick = {}, modifier = Modifier.testTag("secondary")) { Text("2") }
+                    PrimaryButton(text = "1", onClick = {}, modifier = Modifier.testTag("primary"))
+                    SecondaryButton(text = "2", onClick = {}, modifier = Modifier.testTag("secondary"))
                 }
             }
         }
