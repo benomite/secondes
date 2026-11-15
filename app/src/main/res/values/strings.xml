@@ -31,4 +31,24 @@
     <string name="member_name">Your name in the journal</string>
     <string name="member_name_missing">Enter your name to fill days</string>
     <string name="day_not_saved">This day could not be saved.</string>
+    <string name="welcome_promise">One second a day, together. At the end of the year, the film of your year.</string>
+    <string name="welcome_today">today</string>
+    <string name="welcome_sign_in">Sign in with Google</string>
+    <string name="welcome_signed_in">Signed in with your Google account</string>
+    <string name="sign_in_failed">Signing in with Google did not go through. Try again.</string>
+    <string name="journal_create">Create a journal</string>
+    <string name="journal_create_subtitle">You will invite the others next</string>
+    <string name="journal_join">Join a journal</string>
+    <string name="journal_join_subtitle">Pick the folder someone shared with you on Drive</string>
+    <string name="journal_create_failed">The journal could not be created in your Drive. Check your connection and try again.</string>
+    <string name="journal_not_saved">The journal could not be saved on this phone. Try again.</string>
+    <string name="picker_failed">Google\'s Drive file picker could not open. Check your connection and try again.</string>
+    <string name="picker_not_set_up">This build of the app has no key for Google\'s Drive file picker, so it cannot join a journal.</string>
+    <string name="share_title">Your journal is created</string>
+    <string name="share_folder">It is the folder \"%1$s\" in your Google Drive.</string>
+    <string name="share_steps">To invite the others: in Google Drive, share this folder with their Google accounts as editors. Then, in the app, they choose \"Join a journal\" and pick this folder.</string>
+    <string name="share_open_drive">Open the folder in Drive</string>
+    <string name="share_open_journal">Go to the journal</string>
+    <string name="access_lost_title">Access to the journal was lost</string>
+    <string name="access_lost_text">The folder \"%1$s\" can no longer be opened: it was deleted, or it is no longer shared with you. Join a journal or create a new one.</string>
 </resources>

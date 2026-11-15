@@ -1,6 +1,7 @@
 package io.github.benomite.secondes
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -14,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.bobl.secondes.export.ExportRoute
 import java.io.File
+import java.io.IOException
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
@@ -76,15 +79,39 @@ class MainActivity : ComponentActivity() {
     private val syncScope = MainScope()
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
+    // The journal chosen on this phone (a Drive folder), and the Google access that creates, joins and checks it.
+    private lateinit var selection: JournalSelection
+    private lateinit var google: GoogleAuthorization
+    private val drive = DriveFolders()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The app draws behind the system bars; each screen keeps its controls clear of them with the insets.
         enableEdgeToEdge()
         journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), HttpRemoteJournal(BuildConfig.JOURNAL_BASE_URL))
         BehindReminderWorker.schedule(this)
+        selection = JournalSelection(JournalPrefs.of(this))
+        google = GoogleAuthorization(this)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    // A phone with a stored journal opens it directly; otherwise it signs in, then creates or joins one.
+                    when (val start = selection.screen) {
+                        is JournalScreen.Open -> {
+                            // Opening the journal checks that its folder can still be opened; a lost one says so.
+                            LaunchedEffect(start.journal) { checkAccess(start.journal) }
+                            JournalHome()
+                        }
+                        else -> JournalStart(start)
+                    }
+                }
+            }
+        }
+    }
+
+    /** The journal: its calendar, the second picker, the import, the settings and the film of the year. */
+    @Composable
+    private fun JournalHome() {
                     val safeArea = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     // The reminder is on by default, so the notification permission is asked at launch.
                     val reminderOn = remember { ReminderPrefs.of(this@MainActivity).settings()?.enabled == true }
@@ -255,8 +282,126 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+    }
+
+    /**
+     * Before the journal: sign-in, then create or join one; after a creation, how to share it; and when the stored
+     * journal's folder is lost, saying so. Each Drive action asks Google for the drive.file access first.
+     */
+    @Composable
+    private fun JournalStart(start: JournalScreen) {
+        val scope = rememberCoroutineScope()
+        var busy by remember { mutableStateOf(false) }
+        var message by remember { mutableStateOf<Int?>(null) }
+        var pickerToken by remember { mutableStateOf<String?>(null) }
+        var waitingConsent by rememberSaveable { mutableStateOf<StartAction?>(null) }
+
+        // Runs [action] once Google granted the access.
+        fun run(action: StartAction, token: String) {
+            when (action) {
+                StartAction.SIGN_IN -> selection.signedIn()
+                StartAction.CREATE -> scope.launch {
+                    busy = true
+                    val folderId = try {
+                        withContext(Dispatchers.IO) { drive.create(token, JOURNAL_FOLDER_NAME) }
+                    } catch (e: IOException) {
+                        null
+                    }
+                    busy = false
+                    message = when {
+                        folderId == null -> R.string.journal_create_failed
+                        !selection.created(folderId, JOURNAL_FOLDER_NAME) -> R.string.journal_not_saved
+                        else -> null
+                    }
+                }
+                StartAction.JOIN ->
+                    if (BuildConfig.GOOGLE_API_KEY.isBlank() || BuildConfig.GOOGLE_PROJECT_NUMBER.isBlank()) {
+                        message = R.string.picker_not_set_up
+                    } else {
+                        pickerToken = token
+                    }
+            }
+        }
+
+        val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            val action = waitingConsent
+            waitingConsent = null
+            val token = if (result.resultCode == RESULT_OK) google.tokenFrom(result.data) else null
+            if (token == null) message = R.string.sign_in_failed else if (action != null) run(action, token)
+        }
+
+        // Asks Google for the access, through its own sign-in and consent screen when needed, then runs [action].
+        fun authorizeThen(action: StartAction) {
+            message = null
+            busy = true
+            scope.launch {
+                val authorization = google.authorize()
+                busy = false
+                when (authorization) {
+                    is DriveAuthorization.Granted -> run(action, authorization.accessToken)
+                    is DriveAuthorization.NeedsConsent -> {
+                        waitingConsent = action
+                        consent.launch(IntentSenderRequest.Builder(authorization.intentSender).build())
+                    }
+                    DriveAuthorization.Failed -> message = R.string.sign_in_failed
                 }
             }
+        }
+
+        val token = pickerToken
+        if (token != null) {
+            DrivePickerScreen(token, BuildConfig.GOOGLE_API_KEY, BuildConfig.GOOGLE_PROJECT_NUMBER) { answer ->
+                pickerToken = null
+                message = when (answer) {
+                    is PickerAnswer.Picked ->
+                        if (selection.joined(answer.folderId, answer.name.ifBlank { answer.folderId })) null else R.string.journal_not_saved
+                    PickerAnswer.Cancelled -> null
+                    PickerAnswer.Failed -> R.string.picker_failed
+                }
+            }
+            return
+        }
+        when (start) {
+            JournalScreen.SignIn, JournalScreen.Choose -> WelcomeScreen(
+                signedIn = start == JournalScreen.Choose,
+                busy = busy,
+                message = message,
+                onSignIn = { authorizeThen(StartAction.SIGN_IN) },
+                onCreate = { authorizeThen(StartAction.CREATE) },
+                onJoin = { authorizeThen(StartAction.JOIN) },
+            )
+            is JournalScreen.Share -> ShareJournalScreen(
+                journal = start.journal,
+                onOpenDrive = { openInDrive(start.journal) },
+                onOpenJournal = selection::openShared,
+            )
+            is JournalScreen.AccessLost -> AccessLostScreen(
+                journal = start.journal,
+                busy = busy,
+                message = message,
+                onJoin = { authorizeThen(StartAction.JOIN) },
+                onCreate = { authorizeThen(StartAction.CREATE) },
+            )
+            is JournalScreen.Open -> Unit
+        }
+    }
+
+    /**
+     * Asks Drive whether [journal]'s folder can still be opened. Without the access granted silently, or without an
+     * answer from Drive, nothing is decided and the journal stays open, as it does offline.
+     */
+    private suspend fun checkAccess(journal: StoredJournal) {
+        val authorization = google.authorize() as? DriveAuthorization.Granted ?: return
+        val access = withContext(Dispatchers.IO) { drive.access(authorization.accessToken, journal.folderId) }
+        selection.accessChecked(journal, access)
+    }
+
+    /** Opens the journal's folder in the Drive app, or the browser, where it is shared. */
+    private fun openInDrive(journal: StoredJournal) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/drive/folders/${Uri.encode(journal.folderId)}")))
+        } catch (e: ActivityNotFoundException) {
+            // Neither Drive nor a browser: the steps on the screen still say where to share it.
         }
     }
 
@@ -315,6 +460,9 @@ class MainActivity : ComponentActivity() {
         const val JOURNAL_FILE = "journal.json"
     }
 }
+
+/** What the user asked for before the journal, waiting for Google's access: sign in, create or join a journal. */
+private enum class StartAction { SIGN_IN, CREATE, JOIN }
 
 /** Asks for the notification permission (Android 13 and later) whenever [reminderOn] becomes true. */
 @Composable
