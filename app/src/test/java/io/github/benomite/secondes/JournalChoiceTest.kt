@@ -129,8 +129,20 @@ class JournalChoiceTest {
 
     /** Preferences whose writes never reach the disk. */
     private class FailingPrefs(private val real: SharedPreferences) : SharedPreferences by real {
-        override fun edit(): SharedPreferences.Editor = object : SharedPreferences.Editor by real.edit() {
+        override fun edit(): SharedPreferences.Editor = FailingEditor()
+
+        /** Records nothing and fails to commit; returns itself so that a chained commit() still reaches this one. */
+        private class FailingEditor : SharedPreferences.Editor {
+            override fun putString(key: String?, value: String?) = this
+            override fun putStringSet(key: String?, values: MutableSet<String>?) = this
+            override fun putInt(key: String?, value: Int) = this
+            override fun putLong(key: String?, value: Long) = this
+            override fun putFloat(key: String?, value: Float) = this
+            override fun putBoolean(key: String?, value: Boolean) = this
+            override fun remove(key: String?) = this
+            override fun clear() = this
             override fun commit() = false
+            override fun apply() {}
         }
     }
 }
