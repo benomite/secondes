@@ -13,11 +13,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -71,11 +78,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The app draws behind the system bars; each screen keeps its controls clear of them with the insets.
+        enableEdgeToEdge()
         journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), HttpRemoteJournal(BuildConfig.JOURNAL_BASE_URL))
         BehindReminderWorker.schedule(this)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val safeArea = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     // The reminder is on by default, so the notification permission is asked at launch.
                     val reminderOn = remember { ReminderPrefs.of(this@MainActivity).settings()?.enabled == true }
                     AskNotificationPermission(reminderOn)
@@ -143,10 +153,10 @@ class MainActivity : ComponentActivity() {
                     val picking = days.picking
                     val importing = days.importing
                     if (showExport) {
-                        ExportRoute(days = journalDays.values, currentYear = today.year, onBack = { showExport = false })
+                        ExportRoute(days = journalDays.values, currentYear = today.year, onBack = { showExport = false }, modifier = safeArea)
                     } else if (showSettings) {
                         // The days picked so far are held by the activity, so a visit to the settings keeps them.
-                        ReminderSettingsScreen(onBack = { showSettings = false })
+                        ReminderSettingsScreen(onBack = { showSettings = false }, modifier = safeArea)
                     } else if (picking != null) {
                         BackHandler { days.cancel() }
                         SecondPickerScreen(
@@ -168,9 +178,11 @@ class MainActivity : ComponentActivity() {
                             },
                             onCancel = days::cancel,
                             player = { window, modifier -> LoopingSecondPlayer(picking.videoUri, window, modifier) },
+                            modifier = safeArea,
                         )
                     } else {
-                        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        // The list below scrolls under the navigation bar: it takes the bottom inset as its own end padding.
+                        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(horizontal = 24.dp)) {
                             if (importing != null) {
                                 BackHandler { days.cancelImport() }
                                 Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
@@ -239,6 +251,7 @@ class MainActivity : ComponentActivity() {
                                 // An empty day takes the single video picked for it, as the user's explicit choice.
                                 onFill = { if (importing == null) fillDay(it) },
                                 previewDays = importing?.byDay?.keys.orEmpty(),
+                                bottomInset = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding(),
                             )
                         }
                     }
@@ -317,7 +330,7 @@ private fun AskNotificationPermission(reminderOn: Boolean) {
 
 /** The reminder's off switch and threshold, saved as soon as the user changes them to a valid value. */
 @Composable
-private fun ReminderSettingsScreen(onBack: () -> Unit) {
+private fun ReminderSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { ReminderPrefs.of(context) }
     // Unreadable saved settings show the defaults, and are overwritten only once the user changes something.
@@ -336,7 +349,7 @@ private fun ReminderSettingsScreen(onBack: () -> Unit) {
     val member = remember { MemberPrefs.of(context) }
     var name by remember { mutableStateOf(member.name().orEmpty()) }
 
-    Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)
         // The name the days filled here are signed with, for the other members of the journal.
         OutlinedTextField(
