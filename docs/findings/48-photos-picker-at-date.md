@@ -50,11 +50,9 @@ The issue says "four acceptance criteria" in its title and context: the four fea
 3. **User can pick a video from a neighbouring day** — *achievable as written*: today's #21 flow places each pick on its capture day **[repo]**.
 4. **Day with no video** — *achievable with changes*: undocumented for a date-positioned picker, since none is documented; to be defined once a fallback is chosen.
 
-The finding's own deliverable requirements (answer, evidence, constraints, fallbacks, no feature code) are met as follows: answer, evidence and constraints are complete for the Android picker only; the Google Photos Picker API part is open because its three pages could not be read (refused again, including through a web-fetch sub-agent). Fallbacks are below; only this file is added.
-
 ## Candidate fallbacks (none chosen)
 
 - **Default picker, then place by capture date (today, #21).** The user scrolls from the newest media; each pick lands on its capture day. Gives: no sign-in, works now. Costs: the scrolling the chef wants to avoid.
 - **Default picker plus an in-app check after selection.** The app compares the picked video's capture date to the tapped day and says if it differs, or offers to place it on the tapped day or the capture day. Gives: protection against picking the wrong day. Costs: still no positioning, and the check happens after the pick.
-- **In-app day browser over a Google Photos read scope.** The app lists videos by date itself. Gives: real positioning, with neighbouring days. Costs: sign-in, a Google scope that is probably restricted **[to verify]**, a new screen; contradicts the current "no scope" stance **[repo]**.
-- **Google Photos Picker API session.** Gives: possibly another picking surface. Costs: sign-in and scope; whether it can open at a date is unread **[to verify]**.
+- **In-app day browser over a Google Photos read scope.** The app lists videos by date itself. Gives: real positioning, with neighbouring days. Costs: sign-in, a Google Photos read scope whose availability to this app is unchecked **[to verify]**, a new screen; contradicts the current "no scope" stance **[repo]**.
+- **Google Photos Picker API session.** Gives: a Google-hosted picking surface that returns the picked items; whether it opens at a date is the open question above **[to verify]**. Costs: sign-in and a scope, and a flow different from today's.
