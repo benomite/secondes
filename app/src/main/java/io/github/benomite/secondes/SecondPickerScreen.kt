@@ -66,6 +66,7 @@ fun SecondPickerScreen(
     onConfirm: (SecondWindow) -> Unit,
     onCancel: () -> Unit,
     player: @Composable (SecondWindow, Modifier) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val duration = video.durationMs
     var window by remember(video, initialWindow) {
@@ -73,7 +74,7 @@ fun SecondPickerScreen(
     }
     val short = isShorterThanOneSecond(duration)
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
