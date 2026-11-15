@@ -7,4 +7,6 @@ local.properties
 .kotlin/
 captures/
 .gradle-user/
+gradle/tmp/*
+!gradle/tmp/.gitkeep
 .android-user/
