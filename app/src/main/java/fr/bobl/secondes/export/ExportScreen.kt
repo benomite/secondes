@@ -16,10 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -39,7 +37,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.benomite.secondes.JournalDay
+import io.github.benomite.secondes.PrimaryButton
 import io.github.benomite.secondes.R
+import io.github.benomite.secondes.SecondaryButton
+import io.github.benomite.secondes.SecondesTheme
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -228,13 +229,13 @@ fun ExportScreen(
                 onClick = { older?.let(onYearChange) },
                 enabled = older != null && !running,
                 modifier = Modifier.testTag(OLDER_YEAR_TAG),
-            ) { Text("‹") }
+            ) { Text("‹", style = MaterialTheme.typography.titleLarge) }
             Text(year.toString(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag(YEAR_TAG))
             TextButton(
                 onClick = { newer?.let(onYearChange) },
                 enabled = newer != null && !running,
                 modifier = Modifier.testTag(NEWER_YEAR_TAG),
-            ) { Text("›") }
+            ) { Text("›", style = MaterialTheme.typography.titleLarge) }
         }
         Text(stringResource(R.string.export_clip_count, clipCount))
         Row(
@@ -250,13 +251,12 @@ fun ExportScreen(
                 modifier = Modifier.testTag(DATE_OVERLAY_TAG),
             )
         }
-        Button(
+        PrimaryButton(
+            text = stringResource(R.string.export_button),
             onClick = onExport,
             enabled = clipCount > 0 && !running,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.export_button))
-        }
+        )
         when {
             state is ExportState.Running -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LinearProgressIndicator(
@@ -269,13 +269,9 @@ fun ExportScreen(
             state is ExportState.Done -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.export_done, state.seconds))
                 if (state.leftOut > 0) Text(stringResource(R.string.export_left_out, state.leftOut))
-                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.export_save)) }
-                OutlinedButton(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.export_share))
-                }
-                OutlinedButton(onClick = onCopyToDrive, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.export_drive))
-                }
+                PrimaryButton(text = stringResource(R.string.export_save), onClick = onSave, modifier = Modifier.fillMaxWidth())
+                SecondaryButton(text = stringResource(R.string.export_share), onClick = onShare, modifier = Modifier.fillMaxWidth())
+                SecondaryButton(text = stringResource(R.string.export_drive), onClick = onCopyToDrive, modifier = Modifier.fillMaxWidth())
             }
             state is ExportState.Failed -> Text(
                 stringResource(R.string.export_failed, state.message),
@@ -298,7 +294,7 @@ fun ExportScreen(
             )
         }
         // Leaving the screen while the film is built stops the export.
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+        SecondaryButton(text = stringResource(R.string.back), onClick = onBack)
     }
 }
 
@@ -306,8 +302,8 @@ fun ExportScreen(
 @Composable
 private fun ExportScreenPreview() {
     var dateOverlay by remember { mutableStateOf(false) }
-    MaterialTheme {
-        Surface {
+    SecondesTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
             ExportScreen(
                 years = listOf(2026, 2025),
                 year = 2026,

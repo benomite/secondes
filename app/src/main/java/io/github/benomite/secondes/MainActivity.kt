@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -93,8 +92,8 @@ class MainActivity : ComponentActivity() {
         selection = JournalSelection(JournalPrefs.of(this))
         google = GoogleAuthorization(this)
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            SecondesTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     // A phone with a stored journal opens it directly; otherwise it signs in, then creates or joins one.
                     when (val start = selection.screen) {
                         is JournalScreen.Open -> {
@@ -209,7 +208,7 @@ class MainActivity : ComponentActivity() {
                         )
                     } else {
                         // The list below scrolls under the navigation bar: it takes the bottom inset as its own end padding.
-                        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(horizontal = 24.dp)) {
+                        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp)) {
                             if (importing != null) {
                                 BackHandler { days.cancelImport() }
                                 Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
@@ -238,7 +237,7 @@ class MainActivity : ComponentActivity() {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         // The system photo picker, restricted to videos: Google Photos' library shows there when it is the phone's cloud media app.
                                         // A member with no name yet types it first: the imported days are signed with it.
-                                        Button(enabled = !readingImport, onClick = {
+                                        PrimaryButton(enabled = !readingImport, onClick = {
                                             message = null
                                             if (MemberPrefs.of(this@MainActivity).name() == null) {
                                                 showSettings = true
@@ -531,7 +530,7 @@ private fun ReminderSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modi
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
         )
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+        SecondaryButton(text = stringResource(R.string.back), onClick = onBack)
     }
 }
 

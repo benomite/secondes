@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="export_open">Film de l\'année</string>
+    <string name="export_title">Film de l\'année</string>
+    <string name="export_clip_count">Jours avec un extrait : %1$d</string>
+    <string name="export_date_overlay">Afficher la date sur chaque seconde</string>
+    <string name="export_button">Exporter</string>
+    <string name="export_running">Export en cours… %1$d %%</string>
+    <string name="export_done">Le film est prêt : %1$d secondes.</string>
+    <string name="export_left_out">%1$d jour(s) rempli(s) sur un autre téléphone n\'ont pas pu être lus ici et ne sont pas dans le film.</string>
+    <string name="export_failed">L\'export a échoué : %1$s</string>
+    <string name="export_none_readable">Aucun des %1$d jour(s) de cette année ne peut être lu sur ce téléphone.</string>
+    <string name="export_nothing">Aucun jour de %1$d n\'a encore d\'extrait.</string>
+    <string name="export_save">Enregistrer sur le téléphone</string>
+    <string name="export_share">Partager</string>
+    <string name="export_drive">Copier dans le dossier Drive du journal</string>
+    <string name="export_saved">Le film est enregistré dans la galerie.</string>
+    <string name="export_save_failed">Le film n\'a pas pu être enregistré sur le téléphone.</string>
+    <string name="export_share_failed">Le film n\'a pas pu être partagé.</string>
+    <string name="export_drive_done">Le film est copié ; Drive l\'envoie dans le dossier choisi.</string>
+    <string name="export_drive_failed">Le film n\'a pas pu être copié dans Drive.</string>
+</resources>

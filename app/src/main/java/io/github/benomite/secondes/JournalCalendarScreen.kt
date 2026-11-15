@@ -12,18 +12,27 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 fun filledDayTag(date: LocalDate) = "day-filled-$date"
 fun emptyDayTag(date: LocalDate) = "day-empty-$date"
@@ -44,18 +53,23 @@ fun JournalCalendarScreen(
     bottomInset: Dp = 0.dp,
 ) {
     val months = calendarMonths(year, clips)
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 8.dp + bottomInset)) {
+    // Each member's color, from their place in the journal: the same on every phone.
+    val joinOrder = memberJoinOrder(clips.map { it.author to it.date })
+    val locale = LocalConfiguration.current.locales[0]
+    val monthFormat = DateTimeFormatter.ofPattern("LLLL yyyy", locale)
+    // No side padding: a day of a 360 dp wide phone stays at least 44 dp wide, a comfortable touch target.
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + bottomInset)) {
         item {
             Text(
-                "Missing days: ${missingDayCount(clips, firstDay, today)}",
+                stringResource(R.string.calendar_missing_days, missingDayCount(clips, firstDay, today)),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.testTag(MISSING_COUNT_TAG),
             )
         }
         items(months) { month ->
             Text(
-                month.month.toString(),
-                style = MaterialTheme.typography.titleSmall,
+                month.month.format(monthFormat).replaceFirstChar { it.titlecase(locale) },
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 12.dp),
             )
             val leading = month.month.atDay(1).dayOfWeek.value - 1
@@ -64,7 +78,7 @@ fun JournalCalendarScreen(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     week.forEach { day ->
                         Box(modifier = Modifier.weight(1f)) {
-                            if (day != null) DayCell(day, day.date in previewDays, onPlay, onFill)
+                            if (day != null) DayCell(day, day.date in previewDays, joinOrder, onPlay, onFill)
                         }
                     }
                     repeat(7 - week.size) { Box(modifier = Modifier.weight(1f)) }
@@ -75,7 +89,7 @@ fun JournalCalendarScreen(
 }
 
 @Composable
-private fun DayCell(day: CalendarDay, previewed: Boolean, onPlay: (Clip) -> Unit, onFill: (LocalDate) -> Unit) {
+private fun DayCell(day: CalendarDay, previewed: Boolean, joinOrder: Map<String, Int>, onPlay: (Clip) -> Unit, onFill: (LocalDate) -> Unit) {
     val clip = day.clip
     if (clip != null) {
         Column(
@@ -88,14 +102,29 @@ private fun DayCell(day: CalendarDay, previewed: Boolean, onPlay: (Clip) -> Unit
         ) {
             Image(
                 bitmap = clip.thumbnail,
-                contentDescription = clip.author,
+                contentDescription = firstName(clip.author),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f).testTag(thumbnailTag(day.date)),
             )
-            Text("${day.date.dayOfMonth} · ${clip.author}", style = MaterialTheme.typography.labelSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // The author's color, as a dot: the ochre is too light for text on paper.
+                joinOrder[clip.author]?.let {
+                    Box(Modifier.padding(end = 2.dp).size(6.dp).clip(CircleShape).background(memberColor(it)))
+                }
+                // The day number in Young Serif, then the author's first name.
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontFamily = YoungSerif)) { append(day.date.dayOfMonth.toString()) }
+                        append(" · ")
+                        append(firstName(clip.author))
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
+            }
             if (clip.pending) {
                 Text(
-                    "Not sent",
+                    stringResource(R.string.calendar_not_sent),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.testTag(notSentTag(day.date)),
@@ -108,12 +137,16 @@ private fun DayCell(day: CalendarDay, previewed: Boolean, onPlay: (Clip) -> Unit
                 .padding(1.dp)
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .alpha(0.5f)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .testTag(emptyDayTag(day.date))
                 .clickable { onFill(day.date) },
         ) {
-            Text(day.date.dayOfMonth.toString(), style = MaterialTheme.typography.labelSmall)
+            Text(
+                day.date.dayOfMonth.toString(),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = YoungSerif),
+                color = Palette.MutedText,
+                modifier = Modifier.padding(start = 3.dp),
+            )
         }
     }
 }

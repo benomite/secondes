@@ -1,6 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The first launch, in French as the chef wrote it (#44); the rest of the app is translated with its identity (#49). -->
 <resources>
+    <string name="app_name">secondes</string>
+    <string name="import_videos">Importer des vidéos de Google Photos</string>
+    <string name="import_reading">Lecture des vidéos choisies…</string>
+    <string name="import_preview">Aperçu : chaque vidéo est sur le jour où elle a été filmée. Rien n\'est enregistré avant que tu confirmes.</string>
+    <string name="import_confirm">Confirmer l\'import</string>
+    <string name="import_cancel">Annuler</string>
+    <string name="import_shared_day">%1$s : %2$d vidéos choisies tombent ce jour-là. Choisis celle qui le garde ; les autres ne sont pas importées.</string>
+    <string name="import_filled_day">%1$s a déjà un extrait. Garde-le ou remplace-le par la vidéo choisie.</string>
+    <string name="import_filled_shared_day">%1$s a déjà un extrait, et %2$d vidéos choisies tombent ce jour-là. Garde l\'extrait ou choisis la vidéo qui le remplace ; les autres ne sont pas importées.</string>
+    <string name="import_keep_existing">Garder l\'actuel</string>
+    <string name="import_video_n">Vidéo %d</string>
+    <string name="import_choices_missing">Fais un choix pour chaque jour ci-dessus pour confirmer.</string>
+    <string name="import_refused_not_video">L\'élément %d n\'est pas une vidéo (une photo ?) : seules les vidéos vont sur le calendrier. Il n\'est pas importé.</string>
+    <string name="import_refused_unreadable">La vidéo %d n\'a pas pu être lue. Elle n\'est pas importée.</string>
+    <string name="import_refused_no_date">La vidéo %d n\'a pas de date de tournage dans ses métadonnées. Elle n\'est pas importée.</string>
+    <string name="not_a_video">Ce n\'est pas une vidéo : seules les vidéos vont sur le calendrier.</string>
+    <string name="settings">Réglages</string>
+    <string name="back">Retour</string>
+    <string name="reminder_switch">Me prévenir quand le journal prend du retard</string>
+    <string name="reminder_threshold">Jours vides avant le rappel</string>
+    <string name="reminder_threshold_invalid">Entre un nombre entier de jours, 1 ou plus</string>
+    <string name="behind_channel">Retard</string>
+    <string name="behind_title">Ton journal prend du retard</string>
+    <plurals name="behind_text">
+        <item quantity="one">%d jour manque</item>
+        <item quantity="many">%d jours manquent</item>
+        <item quantity="other">%d jours manquent</item>
+    </plurals>
+    <string name="video_unreadable">Cette vidéo n\'a pas pu être lue.</string>
+    <string name="member_name">Ton nom dans le journal</string>
+    <string name="member_name_missing">Entre ton nom pour remplir des jours</string>
+    <string name="day_not_saved">Ce jour n\'a pas pu être enregistré.</string>
     <string name="welcome_promise">Une seconde par jour, ensemble. À la fin de l\'année, le film de votre année.</string>
     <string name="welcome_today">aujourd\'hui</string>
     <string name="welcome_sign_in">Se connecter avec Google</string>
@@ -21,4 +52,12 @@
     <string name="share_open_journal">Aller au journal</string>
     <string name="access_lost_title">L\'accès au journal est perdu</string>
     <string name="access_lost_text">Le dossier « %1$s » ne s\'ouvre plus : il a été supprimé, ou il n\'est plus partagé avec toi. Rejoins un journal ou crées-en un nouveau.</string>
+    <string name="second_title">Choisis la seconde</string>
+    <string name="second_value">%1$.1f s</string>
+    <string name="second_range">%1$s – %2$s</string>
+    <string name="second_short_video">Cette vidéo dure moins d\'une seconde : le jour durera %1$s.</string>
+    <string name="second_cancel">Annuler</string>
+    <string name="second_confirm">Garder cette seconde</string>
+    <string name="calendar_missing_days">Jours manquants : %1$d</string>
+    <string name="calendar_not_sent">Pas envoyé</string>
 </resources>
