@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -77,7 +80,8 @@ fun WelcomeScreen(
     onCreate: () -> Unit,
     onJoin: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().background(Paper).padding(24.dp)) {
+    // The app draws behind the system bars: the screen keeps its content clear of them.
+    Column(modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
         Column(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -190,7 +194,7 @@ private fun Polaroid(modifier: Modifier, caption: String? = null, photo: @Compos
 fun ShareJournalScreen(journal: StoredJournal, onOpenDrive: () -> Unit, onOpenJournal: () -> Unit) {
     BackHandler(onBack = onOpenJournal)
     Column(
-        modifier = Modifier.fillMaxSize().background(Paper).verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.share_title), style = MaterialTheme.typography.headlineSmall, color = Ink)
@@ -209,7 +213,7 @@ fun ShareJournalScreen(journal: StoredJournal, onOpenDrive: () -> Unit, onOpenJo
 @Composable
 fun AccessLostScreen(journal: StoredJournal, busy: Boolean, @StringRes message: Int?, onJoin: () -> Unit, onCreate: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().background(Paper).verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(Paper).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.access_lost_title), style = MaterialTheme.typography.headlineSmall, color = Ink)
@@ -239,7 +243,7 @@ fun DrivePickerScreen(accessToken: String, apiKey: String, appId: String, onAnsw
     BackHandler { onAnswer(PickerAnswer.Cancelled) }
     val main = remember { Handler(Looper.getMainLooper()) }
     AndroidView(
-        modifier = Modifier.fillMaxSize().testTag("drive-picker"),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).testTag("drive-picker"),
         factory = { context ->
             val assets = WebViewAssetLoader.Builder().addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context)).build()
             WebView(context).apply {

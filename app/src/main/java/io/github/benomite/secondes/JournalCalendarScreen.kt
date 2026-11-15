@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
@@ -38,9 +40,11 @@ fun JournalCalendarScreen(
     onPlay: (Clip) -> Unit,
     onFill: (LocalDate) -> Unit,
     previewDays: Set<LocalDate> = emptySet(),
+    // Room kept at the end of the list, so the last row can scroll clear of the navigation bar.
+    bottomInset: Dp = 0.dp,
 ) {
     val months = calendarMonths(year, clips)
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 8.dp + bottomInset)) {
         item {
             Text(
                 "Missing days: ${missingDayCount(clips, firstDay, today)}",
