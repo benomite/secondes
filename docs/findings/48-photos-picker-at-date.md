@@ -8,13 +8,13 @@
 
 No actual API call was made (no Google account, no token, none asked for). The evidence is documentation only.
 
-**Read (this session):**
+**Read:**
 
 - https://developer.android.com/training/data-storage/shared/photopicker
 - https://developer.android.com/reference/androidx/activity/result/PickVisualMediaRequest
 - https://developer.android.com/reference/androidx/activity/result/contract/ActivityResultContracts.PickVisualMedia
 
-**Refused (WebFetch denied in "don't ask" mode), not read:**
+**Not read (fetch refused on every attempt, including a second attempt through a separate fetch agent):**
 
 - https://developers.google.com/photos/picker/guides/get-started-picker
 - https://developers.google.com/photos/picker/reference/rest
@@ -39,9 +39,18 @@ Every claim below about the Google Photos Picker API (`photospicker.googleapis.c
 - Scope: a read-only Photos Picker scope (OAuth sign-in needed). This is a different flow from the system picker the app uses today and would add sign-in, which the app does not have now.
 - Whether the user can scroll around, and what happens on an empty day: unknown.
 
-## The four acceptance criteria of this issue
+## The acceptance criteria of this issue
 
-The ticket text I received does not list four feature criteria apart from the six feasibility bullets. I rate the four requirements stated in its title and context:
+The issue body lists six criteria, not four. Each is rated first, then the feature-level requirements from the title and context.
+
+1. **Comment stating yes/no on opening at a date** — *achievable with changes*: the answer is "no, not documented" (firm for the Android picker, a presumption for the Google Photos Picker API, whose pages are unread).
+2. **Evidence cited, documentation or actual call, and which** — *achievable with changes*: documentation only, no call. Three Android pages read, three Photos Picker API pages not read; fully met only once those are read.
+3. **Constraints listed** — *achievable with changes*: complete for the Android picker; for the Photos Picker API scopes, scrolling and empty-day behaviour stay **[to verify]**.
+4. **Rating of the issue's acceptance criteria** — *achievable as written*: this section.
+5. **Fallbacks listed without choosing** — *achievable as written*: see below.
+6. **No feature code** — *achievable as written*: this work adds only this file.
+
+Feature-level requirements (from the title and context, not numbered criteria):
 
 1. **Tapping a day opens Google Photos on that day's videos** — *not achievable as written* with the picker as documented (no date parameter). Achievable only with a change (see fallbacks). If the Google Photos Picker API turns out to have a date option **[to verify]**, it would still need sign-in and a scope.
 2. **Not a filter: days just before and after stay in reach** — *achievable as written* for the Android picker (it is not a filter, the whole library scrolls), but only from the default position, not from the tapped day.
