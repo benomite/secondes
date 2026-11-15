@@ -41,27 +41,16 @@ Every claim below about the Google Photos Picker API (`photospicker.googleapis.c
 - Scope: a read-only Photos Picker scope (OAuth sign-in needed). This is a different flow from the system picker the app uses today and would add sign-in, which the app does not have now.
 - Whether the user can scroll around, and what happens on an empty day: unknown.
 
-## The acceptance criteria of this issue
+## The four acceptance criteria of this issue
 
-The criterion that asks for this rating says "four acceptance criteria" but the issue body lists six bullets; all six are rated, once, in the order of the issue. Each rating says whether the criterion's *content* can be achieved as written, with changes, or not at all. Ratings that depend on the Google Photos Picker API are provisional.
+The issue says "four acceptance criteria" in its title and context: the four feature requirements below. They are rated for feasibility of the feature, once. Ratings that depend on the Google Photos Picker API are provisional **[to verify]**.
 
-1. **Yes/no on opening at a date** — *not achievable as written*: the answer is "no, not documented" for the Android picker, and **no firm answer exists for the Google Photos Picker API** (its pages were refused). Opening the picker on the tapped day is not possible with the documented Android options; see fallbacks.
-2. **Evidence cited, and which kind** — *achievable with changes*: documentation only, no call. Three Android pages read; three Photos Picker API pages refused three times (including a last attempt in this cook), so this criterion is met only for the Android picker.
-3. **Constraints listed** — *achievable with changes*: complete for the Android picker. For the Photos Picker API, scope, scrolling and empty-day behaviour stay **[to verify]**.
-4. **Rating of each criterion** — *achievable as written*: this section.
-5. **Fallbacks listed without choosing** — *achievable as written*: see below.
-6. **No feature code** — *achievable as written*: only this file is added.
+1. **Tapping a day lands on that day's videos** — *not achievable as written* with the documented Android picker (no date or position option). With the Google Photos Picker API: unknown, pages unread **[to verify]**; it would also add sign-in and a scope.
+2. **Not a filter; neighbouring days stay in reach** — *achievable with changes*: the Android picker scrolls the whole library (newest first), so neighbours are in reach, but only from the default position, not from the tapped day.
+3. **User can pick a video from a neighbouring day** — *achievable as written*: today's #21 flow places each pick on its capture day **[repo]**.
+4. **Day with no video** — *achievable with changes*: undocumented for a date-positioned picker, since none is documented; to be defined once a fallback is chosen.
 
-Feature-level points from the title and context, for the chef's decision:
-
-- **Tapping a day lands on that day's videos** — *not achievable as written* with the documented Android picker; a Photos Picker API date option is **[to verify]** and would add sign-in and a scope.
-- **Not a filter; neighbouring days stay in reach** — *achievable as written* for the Android picker (the whole library scrolls), from the default position only.
-- **User can pick a video from a neighbouring day** — *achievable as written* today (#21 places each pick on its capture day **[repo]**).
-- **Day with no video** — *achievable with changes*: undocumented for a date-positioned picker; to be defined once a fallback is chosen.
-
-## Blocker for the chef
-
-The three developers.google.com pages could not be read by any cook, so the yes/no for the Google Photos Picker API, and its constraints, remain open. A person with web access must read them (or paste the `sessions` and `pickingConfig` reference) before that part of the question can be answered firmly.
+The finding's own deliverable requirements (answer, evidence, constraints, fallbacks, no feature code) are met as follows: answer, evidence and constraints are complete for the Android picker only; the Google Photos Picker API part is open because its three pages could not be read (refused again, including through a web-fetch sub-agent). Fallbacks are below; only this file is added.
 
 ## Candidate fallbacks (none chosen)
 
@@ -69,4 +58,3 @@ The three developers.google.com pages could not be read by any cook, so the yes/
 - **Default picker plus an in-app check after selection.** The app compares the picked video's capture date to the tapped day and says if it differs, or offers to place it on the tapped day or the capture day. Gives: protection against picking the wrong day. Costs: still no positioning, and the check happens after the pick.
 - **In-app day browser over a Google Photos read scope.** The app lists videos by date itself. Gives: real positioning, with neighbouring days. Costs: sign-in, a Google scope that is probably restricted **[to verify]**, a new screen; contradicts the current "no scope" stance **[repo]**.
 - **Google Photos Picker API session.** Gives: possibly another picking surface. Costs: sign-in and scope; whether it can open at a date is unread **[to verify]**.
-- **Re-run this check with web access** to read the three refused pages, then decide.
