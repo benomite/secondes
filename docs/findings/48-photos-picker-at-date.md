@@ -2,7 +2,9 @@
 
 ## Answer
 
-**No, not documented.** None of the three Android pages read documents a date, position, start-at or initial-location parameter for the picker the app uses. The Google Photos Picker API pages could not be read, so for that API the "no" is a presumption **[to verify]**. No other official mechanism was found.
+- **Android Photo Picker (`PickVisualMedia`, what the app uses): no, not documented.** None of the three Android pages read documents a date, position, start-at or initial-location parameter.
+- **Google Photos Picker API (`photospicker.googleapis.com`): not verified, pages unreadable.** No yes/no is given for it. Everything said about it below is **[to verify]** by a person with web access.
+- No other official mechanism was found among the pages read.
 
 ## Evidence: pages read and pages refused
 
@@ -14,7 +16,7 @@ No actual API call was made (no Google account, no token, none asked for). The e
 - https://developer.android.com/reference/androidx/activity/result/PickVisualMediaRequest
 - https://developer.android.com/reference/androidx/activity/result/contract/ActivityResultContracts.PickVisualMedia
 
-**Not read (fetch refused on every attempt, including a second attempt through a separate fetch agent):**
+**Not read (page not readable without web access, to verify by a person):**
 
 - https://developers.google.com/photos/picker/guides/get-started-picker
 - https://developers.google.com/photos/picker/reference/rest
@@ -41,16 +43,16 @@ Every claim below about the Google Photos Picker API (`photospicker.googleapis.c
 
 ## The acceptance criteria of this issue
 
-The issue body lists six criteria, not four. Each is rated first, then the feature-level requirements from the title and context.
+The criterion that asks for this rating says "four acceptance criteria" but the issue body lists six bullets; all six are rated, in the order of the issue. Ratings that depend on the Google Photos Picker API are provisional.
 
-1. **Comment stating yes/no on opening at a date** — *achievable with changes*: the answer is "no, not documented" (firm for the Android picker, a presumption for the Google Photos Picker API, whose pages are unread).
+1. **Comment stating yes/no on opening at a date** — *achievable with changes*: "no, not documented" for the Android picker; "not verified" for the Google Photos Picker API, so no single firm yes/no for both. The comment is posted by the station from this file.
 2. **Evidence cited, documentation or actual call, and which** — *achievable with changes*: documentation only, no call. Three Android pages read, three Photos Picker API pages not read; fully met only once those are read.
-3. **Constraints listed** — *achievable with changes*: complete for the Android picker; for the Photos Picker API scopes, scrolling and empty-day behaviour stay **[to verify]**.
-4. **Rating of the issue's acceptance criteria** — *achievable as written*: this section.
+3. **Constraints listed** — *achievable with changes*: complete for the Android picker; for the Photos Picker API, scopes, scrolling and empty-day behaviour stay **[to verify]**.
+4. **Rating of each acceptance criterion** — *achievable as written*: this section.
 5. **Fallbacks listed without choosing** — *achievable as written*: see below.
 6. **No feature code** — *achievable as written*: this work adds only this file.
 
-Feature-level requirements (from the title and context, not numbered criteria):
+For information, the feature-level requirements from the title and context (not numbered criteria; the Photos Picker API part is provisional):
 
 1. **Tapping a day opens Google Photos on that day's videos** — *not achievable as written* with the picker as documented (no date parameter). Achievable only with a change (see fallbacks). If the Google Photos Picker API turns out to have a date option **[to verify]**, it would still need sign-in and a scope.
 2. **Not a filter: days just before and after stay in reach** — *achievable as written* for the Android picker (it is not a filter, the whole library scrolls), but only from the default position, not from the tapped day.
