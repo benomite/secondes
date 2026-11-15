@@ -34,6 +34,15 @@ android {
         // Empty by default: no server is provisioned yet, so the days filled stay "not sent".
         val journalBaseUrl = (findProperty("secondes.journalBaseUrl") as String?).orEmpty()
         buildConfigField("String", "JOURNAL_BASE_URL", "\"${journalBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+
+        // Google Drive file picker credentials of the build's Google Cloud project (see the README), read from
+        // env vars or Gradle properties, never from committed files. Empty: 'Join a journal' says the picker
+        // is not set up in this build. Sign-in and folder creation need none: the Android OAuth client is
+        // matched by package name and signing certificate.
+        val googleApiKey = releaseSetting("SECONDES_GOOGLE_API_KEY").orEmpty()
+        val googleProjectNumber = releaseSetting("SECONDES_GOOGLE_PROJECT_NUMBER").orEmpty()
+        buildConfigField("String", "GOOGLE_API_KEY", "\"${googleApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "GOOGLE_PROJECT_NUMBER", "\"${googleProjectNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
     // Signing key, read from env vars or Gradle properties, never from committed files.
@@ -119,6 +128,10 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    // Google sign-in and the drive.file authorization; the Drive file picker page, served from the app's assets.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("androidx.webkit:webkit:1.12.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The first launch, in French as the chef wrote it (#44); the rest of the app is translated with its identity (#49). -->
+<resources>
+    <string name="welcome_promise">Une seconde par jour, ensemble. À la fin de l\'année, le film de votre année.</string>
+    <string name="welcome_today">aujourd\'hui</string>
+    <string name="welcome_sign_in">Se connecter avec Google</string>
+    <string name="welcome_signed_in">Connecté avec ton compte Google</string>
+    <string name="sign_in_failed">La connexion à Google n\'a pas abouti. Réessaie.</string>
+    <string name="journal_create">Créer un journal</string>
+    <string name="journal_create_subtitle">Tu inviteras les autres ensuite</string>
+    <string name="journal_join">Rejoindre un journal</string>
+    <string name="journal_join_subtitle">Choisis le dossier qu\'on t\'a partagé sur Drive</string>
+    <string name="journal_create_failed">Le journal n\'a pas pu être créé dans ton Drive. Vérifie ta connexion et réessaie.</string>
+    <string name="journal_not_saved">Le journal n\'a pas pu être enregistré sur ce téléphone. Réessaie.</string>
+    <string name="picker_failed">Le sélecteur de fichiers Drive de Google n\'a pas pu s\'ouvrir. Vérifie ta connexion et réessaie.</string>
+    <string name="picker_not_set_up">Cette version de l\'app n\'a pas de clé pour le sélecteur de fichiers Drive de Google : elle ne peut pas rejoindre un journal.</string>
+    <string name="share_title">Ton journal est créé</string>
+    <string name="share_folder">C\'est le dossier « %1$s » de ton Google Drive.</string>
+    <string name="share_steps">Pour inviter les autres : dans Google Drive, partage ce dossier avec leurs comptes Google, en éditeurs. Puis, dans l\'app, ils choisissent « Rejoindre un journal » et ce dossier.</string>
+    <string name="share_open_drive">Ouvrir le dossier dans Drive</string>
+    <string name="share_open_journal">Aller au journal</string>
+    <string name="access_lost_title">L\'accès au journal est perdu</string>
+    <string name="access_lost_text">Le dossier « %1$s » ne s\'ouvre plus : il a été supprimé, ou il n\'est plus partagé avec toi. Rejoins un journal ou crées-en un nouveau.</string>
+</resources>
