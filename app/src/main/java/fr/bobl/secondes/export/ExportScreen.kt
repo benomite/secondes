@@ -8,11 +8,16 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,15 +38,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.benomite.secondes.JournalDay
+import io.github.benomite.secondes.MinTouchTarget
+import io.github.benomite.secondes.Palette
+import io.github.benomite.secondes.Polaroid
 import io.github.benomite.secondes.PrimaryButton
 import io.github.benomite.secondes.R
 import io.github.benomite.secondes.SecondaryButton
 import io.github.benomite.secondes.SecondesTheme
+import io.github.benomite.secondes.YoungSerif
+import io.github.benomite.secondes.dashedToFill
+import io.github.benomite.secondes.memberColor
 import java.io.File
+import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,32 +76,33 @@ sealed interface ExportState {
 /** What became of the last thing done with the finished film: saved, shared, copied to Drive, or failed. */
 enum class FilmNotice { SAVED, SAVE_FAILED, SHARE_FAILED, COPIED_TO_DRIVE, DRIVE_FAILED }
 
-const val YEAR_TAG = "export-year"
-const val OLDER_YEAR_TAG = "export-older-year"
-const val NEWER_YEAR_TAG = "export-newer-year"
+fun yearTag(year: Int) = "export-year-$year"
+const val BACK_TAG = "export-back"
+const val SECONDS_TAG = "export-seconds"
 const val DATE_OVERLAY_TAG = "export-date-overlay"
 const val PROGRESS_TAG = "export-progress"
 
 /**
  * The export screen wired to the export engine and to the phone: the journal's [days] are filtered to the
- * chosen year, [currentYear] by default, then built into the film, which can be saved to the gallery,
+ * chosen year, [today]'s by default, then built into the film, which can be saved to the gallery,
  * shared, and copied into the journal's Drive folder.
  */
 @Composable
 fun ExportRoute(
     days: Collection<JournalDay>,
-    currentYear: Int,
+    today: LocalDate,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val years = remember(days, currentYear) { exportYears(days, currentYear) }
-    var year by remember { mutableStateOf(currentYear) }
+    val years = remember(days, today) { exportYears(days, today.year) }
+    var year by remember { mutableStateOf(today.year) }
     var dateOverlay by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf<ExportState>(ExportState.Idle) }
     var notice by remember { mutableStateOf<FilmNotice?>(null) }
     val clips = remember(days, year) { yearClips(days, year) }
+    val stats = remember(days, year, today) { yearStats(days, year, today) }
     val film = (state as? ExportState.Done)?.file
 
     fun save(file: File) {
@@ -134,7 +149,7 @@ fun ExportRoute(
             state = ExportState.Idle
             notice = null
         },
-        clipCount = clips.size,
+        stats = stats,
         dateOverlay = dateOverlay,
         onDateOverlayChange = { dateOverlay = it },
         state = state,
@@ -194,15 +209,16 @@ fun ExportRoute(
 }
 
 /**
- * The export screen: the year, the current one by default, with arrows to the other [years]; the date
- * overlay, off by default; the export button and its progress; then what to do with the finished film.
+ * The export screen: back and the title, the [years] as buttons (the chosen one filled), a polaroid of the film
+ * beside its seconds, length, each member's share and the empty days skipped; the date overlay, off by default;
+ * the build and its progress, or its failure, in a dashed box; then what to do with the finished film.
  */
 @Composable
 fun ExportScreen(
     years: List<Int>,
     year: Int,
     onYearChange: (Int) -> Unit,
-    clipCount: Int,
+    stats: YearStats,
     dateOverlay: Boolean,
     onDateOverlayChange: (Boolean) -> Unit,
     state: ExportState,
@@ -215,35 +231,70 @@ fun ExportScreen(
     modifier: Modifier = Modifier,
 ) {
     val running = state is ExportState.Running
-    // The years are latest first: the older year is the next one in the list.
-    val index = years.indexOf(year)
-    val older = years.getOrNull(index + 1)
-    val newer = if (index > 0) years[index - 1] else null
+    val done = state as? ExportState.Done
+    val seconds = done?.seconds ?: stats.seconds
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.export_title), style = MaterialTheme.typography.headlineSmall)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Leaving the screen while the film is built stops the export.
             TextButton(
-                onClick = { older?.let(onYearChange) },
-                enabled = older != null && !running,
-                modifier = Modifier.testTag(OLDER_YEAR_TAG),
-            ) { Text("‹", style = MaterialTheme.typography.titleLarge) }
-            Text(year.toString(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag(YEAR_TAG))
-            TextButton(
-                onClick = { newer?.let(onYearChange) },
-                enabled = newer != null && !running,
-                modifier = Modifier.testTag(NEWER_YEAR_TAG),
-            ) { Text("›", style = MaterialTheme.typography.titleLarge) }
+                onClick = onBack,
+                modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget).testTag(BACK_TAG),
+            ) { Text("‹", style = MaterialTheme.typography.headlineSmall, color = Palette.Ink) }
+            Text(stringResource(R.string.export_title), style = MaterialTheme.typography.headlineSmall)
         }
-        Text(stringResource(R.string.export_clip_count, clipCount))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            years.forEach { y ->
+                val chosen = y == year
+                val onClick = { if (!chosen) onYearChange(y) }
+                val tag = Modifier.heightIn(min = MinTouchTarget).testTag(yearTag(y))
+                if (chosen) {
+                    PrimaryButton(onClick = onClick, modifier = tag, enabled = !running) { Text(y.toString()) }
+                } else {
+                    SecondaryButton(onClick = onClick, modifier = tag, enabled = !running) { Text(y.toString()) }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Polaroid(index = 0, modifier = Modifier.weight(1f), caption = year.toString()) {
+                Box(Modifier.fillMaxSize().background(Palette.Ink), contentAlignment = Alignment.Center) {
+                    Text(year.toString(), fontFamily = YoungSerif, fontSize = 36.sp, color = Palette.OnInk)
+                }
+            }
+            Column(modifier = Modifier.weight(1.2f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    seconds.toString(),
+                    fontFamily = YoungSerif,
+                    fontSize = 56.sp,
+                    color = Palette.Ink,
+                    modifier = Modifier.testTag(SECONDS_TAG),
+                )
+                Text(stringResource(R.string.export_seconds_length, filmLength(seconds)), color = Palette.Secondary)
+                stats.shares.forEach {
+                    Text(
+                        stringResource(R.string.export_member_share, it.name, it.seconds),
+                        color = memberColor(it.joinOrder),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Text(
+                    LocalContext.current.resources.getQuantityString(R.plurals.export_empty_days, stats.emptyDays, stats.emptyDays),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.MutedText,
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(stringResource(R.string.export_date_overlay), modifier = Modifier.weight(1f))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.export_date_overlay), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.export_date_overlay_hint), style = MaterialTheme.typography.bodySmall, color = Palette.MutedText)
+            }
             Switch(
                 checked = dateOverlay,
                 onCheckedChange = onDateOverlayChange,
@@ -251,32 +302,26 @@ fun ExportScreen(
                 modifier = Modifier.testTag(DATE_OVERLAY_TAG),
             )
         }
-        PrimaryButton(
-            text = stringResource(R.string.export_button),
-            onClick = onExport,
-            enabled = clipCount > 0 && !running,
-            modifier = Modifier.fillMaxWidth(),
-        )
         when {
-            state is ExportState.Running -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            state is ExportState.Running -> DashedBox {
+                Text(stringResource(R.string.export_running), fontWeight = FontWeight.SemiBold, color = Palette.ToFillText)
+                Text(
+                    stringResource(R.string.export_running_day, dayReached(state.percent, stats.seconds), stats.seconds),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.ToFillText,
+                )
                 LinearProgressIndicator(
                     progress = { state.percent / 100f },
                     modifier = Modifier.fillMaxWidth().testTag(PROGRESS_TAG),
+                    color = Palette.ToFill,
+                    trackColor = Palette.ToFill.copy(alpha = 0.2f),
                 )
-                Text(stringResource(R.string.export_running, state.percent))
             }
-            clipCount == 0 -> Text(stringResource(R.string.export_nothing, year))
-            state is ExportState.Done -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.export_done, state.seconds))
-                if (state.leftOut > 0) Text(stringResource(R.string.export_left_out, state.leftOut))
-                PrimaryButton(text = stringResource(R.string.export_save), onClick = onSave, modifier = Modifier.fillMaxWidth())
-                SecondaryButton(text = stringResource(R.string.export_share), onClick = onShare, modifier = Modifier.fillMaxWidth())
-                SecondaryButton(text = stringResource(R.string.export_drive), onClick = onCopyToDrive, modifier = Modifier.fillMaxWidth())
+            state is ExportState.Failed -> DashedBox {
+                Text(stringResource(R.string.export_failed, state.message), color = Palette.ToFillText)
             }
-            state is ExportState.Failed -> Text(
-                stringResource(R.string.export_failed, state.message),
-                color = MaterialTheme.colorScheme.error,
-            )
+            stats.seconds == 0 -> Text(stringResource(R.string.export_nothing, year))
+            done != null && done.leftOut > 0 -> Text(stringResource(R.string.export_left_out, done.leftOut))
         }
         notice?.let {
             val failed = it == FilmNotice.SAVE_FAILED || it == FilmNotice.SHARE_FAILED || it == FilmNotice.DRIVE_FAILED
@@ -293,9 +338,31 @@ fun ExportScreen(
                 color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
         }
-        // Leaving the screen while the film is built stops the export.
-        SecondaryButton(text = stringResource(R.string.back), onClick = onBack)
+        if (done != null) {
+            PrimaryButton(text = stringResource(R.string.export_save), onClick = onSave, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                SecondaryButton(text = stringResource(R.string.export_share), onClick = onShare, modifier = Modifier.weight(1f))
+                SecondaryButton(text = stringResource(R.string.export_drive), onClick = onCopyToDrive, modifier = Modifier.weight(1f))
+            }
+        } else {
+            PrimaryButton(
+                text = stringResource(R.string.export_button),
+                onClick = onExport,
+                enabled = stats.seconds > 0 && !running,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
+}
+
+/** The dashed orange box of the build in progress, and of its failure. */
+@Composable
+private fun DashedBox(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().dashedToFill().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        content = content,
+    )
 }
 
 @Preview(showBackground = true)
@@ -308,10 +375,10 @@ private fun ExportScreenPreview() {
                 years = listOf(2026, 2025),
                 year = 2026,
                 onYearChange = {},
-                clipCount = 287,
+                stats = YearStats(289, listOf(MemberShare("Léa", 1, 150), MemberShare("Tom", 2, 139)), 12),
                 dateOverlay = dateOverlay,
                 onDateOverlayChange = { dateOverlay = it },
-                state = ExportState.Idle,
+                state = ExportState.Running(62),
                 notice = null,
                 onExport = {},
                 onSave = {},

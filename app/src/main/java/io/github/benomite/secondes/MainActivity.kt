@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
                     val picking = days.picking
                     val importing = days.importing
                     if (showExport) {
-                        ExportRoute(days = journalDays.values, currentYear = today.year, onBack = { showExport = false }, modifier = safeArea)
+                        ExportRoute(days = journalDays.values, today = today, onBack = { showExport = false }, modifier = safeArea)
                     } else if (showSettings) {
                         // The days picked so far are held by the activity, so a visit to the settings keeps them.
                         ReminderSettingsScreen(onBack = { showSettings = false }, modifier = safeArea)

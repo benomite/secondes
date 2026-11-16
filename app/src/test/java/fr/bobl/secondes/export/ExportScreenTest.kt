@@ -22,6 +22,7 @@ import io.github.benomite.secondes.SharedClip
 import java.io.File
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,12 +43,15 @@ class ExportScreenTest {
 
     private val days = listOf(day(LocalDate.of(2025, 5, 1)), day(LocalDate.of(2026, 1, 1)), day(LocalDate.of(2026, 2, 1)))
 
+    private val today = LocalDate.of(2026, 3, 1)
+
     private fun show(
         state: ExportState = ExportState.Idle,
         notice: FilmNotice? = null,
         onSave: () -> Unit = {},
         onShare: () -> Unit = {},
         onCopyToDrive: () -> Unit = {},
+        onBack: () -> Unit = {},
     ) = rule.setContent {
         var year by remember { mutableStateOf(2026) }
         var dateOverlay by remember { mutableStateOf(false) }
@@ -55,7 +59,7 @@ class ExportScreenTest {
             years = exportYears(days, 2026),
             year = year,
             onYearChange = { year = it },
-            clipCount = yearClips(days, year).size,
+            stats = yearStats(days, year, today),
             dateOverlay = dateOverlay,
             onDateOverlayChange = { dateOverlay = it },
             state = state,
@@ -64,21 +68,38 @@ class ExportScreenTest {
             onSave = onSave,
             onShare = onShare,
             onCopyToDrive = onCopyToDrive,
-            onBack = {},
+            onBack = onBack,
         )
     }
 
     @Test
     fun opensOnTheCurrentYearAndLetsAnotherBeChosen() {
         show()
-        rule.onNodeWithTag(YEAR_TAG).assertTextEquals("2026")
-        rule.onNodeWithText("Days with a clip: 2").assertIsDisplayed()
+        rule.onNodeWithText("The film of the year").assertIsDisplayed()
+        rule.onNodeWithTag(yearTag(2026)).assertIsDisplayed()
+        rule.onNodeWithTag(SECONDS_TAG).assertTextEquals("2")
 
-        rule.onNodeWithTag(OLDER_YEAR_TAG).performClick()
+        rule.onNodeWithTag(yearTag(2025)).performClick()
 
-        rule.onNodeWithTag(YEAR_TAG).assertTextEquals("2025")
-        rule.onNodeWithText("Days with a clip: 1").assertIsDisplayed()
-        rule.onNodeWithTag(OLDER_YEAR_TAG).assertIsNotEnabled()
+        rule.onNodeWithTag(SECONDS_TAG).assertTextEquals("1")
+        rule.onNodeWithText("Léa · 1 s").assertIsDisplayed()
+    }
+
+    @Test
+    fun beforeTheExportItTellsTheSecondsTheLengthEachSharesAndTheEmptyDays() {
+        show()
+        rule.onNodeWithText("seconds, that is 2 s").assertIsDisplayed()
+        rule.onNodeWithText("Léa · 2 s").assertIsDisplayed()
+        // 1 January to 1 March 2026 is 60 days, two of them filled.
+        rule.onNodeWithText("58 empty days, skipped with no black screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun backLeavesTheScreen() {
+        var left = false
+        show(onBack = { left = true })
+        rule.onNodeWithTag(BACK_TAG).performClick()
+        assertTrue(left)
     }
 
     @Test
@@ -92,16 +113,17 @@ class ExportScreenTest {
     }
 
     @Test
-    fun showsTheProgressWhileTheFilmIsBuilt() {
-        show(state = ExportState.Running(42))
+    fun showsTheDayReachedOutOfTheTotalWhileTheFilmIsBuilt() {
+        show(state = ExportState.Running(50))
         rule.onNodeWithTag(PROGRESS_TAG).assertIsDisplayed()
-        rule.onNodeWithText("Exporting… 42%").assertIsDisplayed()
-        rule.onNodeWithText("Export").assertIsNotEnabled()
-        rule.onNodeWithTag(OLDER_YEAR_TAG).assertIsNotEnabled()
+        rule.onNodeWithText("Building the film…").assertIsDisplayed()
+        rule.onNodeWithText("day 1 / 2").assertIsDisplayed()
+        rule.onNodeWithText("Build the film").assertIsNotEnabled()
+        rule.onNodeWithTag(yearTag(2025)).assertIsNotEnabled()
     }
 
     @Test
-    fun aFinishedFilmCanBeSavedSharedAndCopiedToDrive() {
+    fun aFinishedFilmCanBeSavedSharedAndSentToDrive() {
         val done = mutableListOf<String>()
         show(
             state = ExportState.Done(File("secondes-2026.mp4"), seconds = 2, leftOut = 1),
@@ -109,13 +131,12 @@ class ExportScreenTest {
             onShare = { done += "share" },
             onCopyToDrive = { done += "drive" },
         )
-        rule.onNodeWithText("The film is ready: 2 seconds.").assertIsDisplayed()
         rule.onNodeWithText("1 day(s) filled on another phone could not be read here and are not in the film.")
             .assertIsDisplayed()
 
-        rule.onNodeWithText("Save to the phone").performClick()
+        rule.onNodeWithText("Save to the gallery").performClick()
         rule.onNodeWithText("Share").performClick()
-        rule.onNodeWithText("Copy to the journal's Drive folder").performClick()
+        rule.onNodeWithText("Send to Drive").performClick()
 
         assertEquals(listOf("save", "share", "drive"), done)
     }
@@ -124,7 +145,7 @@ class ExportScreenTest {
     fun aFailedExportSaysSo() {
         show(state = ExportState.Failed("decoder"))
         rule.onNodeWithText("Export failed: decoder").assertIsDisplayed()
-        rule.onAllNodesWithText("Save to the phone").assertCountEquals(0)
+        rule.onAllNodesWithText("Save to the gallery").assertCountEquals(0)
     }
 
     @Test

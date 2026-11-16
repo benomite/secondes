@@ -292,7 +292,7 @@ private fun BoxScope.DayNumber(number: String, color: Color) {
 }
 
 /** The look of what is still to fill: a dashed orange border on a very light orange fill. */
-private fun Modifier.dashedToFill(): Modifier = this
+internal fun Modifier.dashedToFill(): Modifier = this
     .clip(CellShape)
     .background(Palette.ToFill.copy(alpha = 0.08f))
     .drawBehind {
