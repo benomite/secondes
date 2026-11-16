@@ -37,4 +37,21 @@ fun sliderFraction(window: SecondWindow, durationMs: Long): Float {
     return (window.startMs.toFloat() / lastStart).coerceIn(0f, 1f)
 }
 
+/**
+ * The window centred on [fraction] (0 = start, 1 = end) of the whole video of [durationMs], as a finger on the strip
+ * of frames puts it; kept inside the video. In a video shorter than one second, the whole video.
+ */
+fun secondWindowAtStripPosition(fraction: Float, durationMs: Long): SecondWindow =
+    secondWindowAt(Math.round(fraction.coerceIn(0f, 1f).toDouble() * durationMs) - CLIP_DURATION_MS / 2, durationMs)
+
+/** [ms] as minutes and seconds ("0:07"), to the nearest second. */
+fun clockTime(ms: Long): String {
+    val totalSeconds = (ms.coerceAtLeast(0) + 500) / 1_000
+    return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
+}
+
+/** The instants of the [count] frames of the strip, each in the middle of its share of a video of [durationMs]. */
+fun stripFrameTimes(durationMs: Long, count: Int): List<Long> =
+    List(count) { (durationMs * (2 * it + 1)) / (2L * count) }
+
 private fun wholeVideo(durationMs: Long) = SecondWindow(0, durationMs.coerceAtLeast(0))

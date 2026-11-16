@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -37,16 +38,23 @@ class SecondPickerScreenTest {
     private var confirmed: SecondWindow? = null
     private var cancelled = false
     private var playing: SecondWindow? = null
+    private var playingNow: Boolean? = null
+    private var backed = false
 
-    private fun show(video: VideoInfo = horizontal, initial: SecondWindow? = null) =
+    private fun show(video: VideoInfo = horizontal, initial: SecondWindow? = null, author: String? = "Benoît") =
         rule.setContent {
             SecondPickerScreen(
+                date = LocalDate.of(2026, 11, 3),
+                author = author,
                 video = video,
                 initialWindow = initial,
+                stripFrames = emptyList(),
                 onConfirm = { confirmed = it },
-                onCancel = { cancelled = true },
-                player = { window, modifier ->
+                onOtherVideo = { cancelled = true },
+                onBack = { backed = true },
+                player = { window, isPlaying, modifier ->
                     playing = window
+                    playingNow = isPlaying
                     Box(modifier.background(Color.Gray))
                 },
             )
@@ -58,7 +66,7 @@ class SecondPickerScreenTest {
     @Test
     fun opensOnTheFirstSecondAndPlaysIt() {
         show()
-        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0.0 s – 1.0 s")
+        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0:00 → 0:01")
         rule.onNodeWithTag(SECOND_SLIDER_TAG).assertIsEnabled()
         assertEquals(SecondWindow(0), playing)
     }
@@ -69,7 +77,7 @@ class SecondPickerScreenTest {
         slideTo(0.5f)
         rule.waitForIdle()
 
-        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("4.5 s – 5.5 s")
+        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0:05 → 0:06")
         assertEquals(SecondWindow(4_500), playing)
 
         rule.onNodeWithTag(CONFIRM_SECOND_TAG).performClick()
@@ -79,7 +87,7 @@ class SecondPickerScreenTest {
     @Test
     fun aFilledDayReopensOnItsSecond() {
         show(initial = SecondWindow(2_250))
-        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("2.3 s – 3.3 s")
+        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0:02 → 0:03")
         rule.onNodeWithTag(CONFIRM_SECOND_TAG).performClick()
         assertEquals(SecondWindow(2_250), confirmed)
     }
@@ -103,7 +111,7 @@ class SecondPickerScreenTest {
         show(video = VideoInfo(600, 1080, 1920))
         rule.onNodeWithTag(SECOND_SLIDER_TAG).assertIsNotEnabled()
         rule.onNodeWithTag(SHORT_VIDEO_NOTE_TAG).assertIsDisplayed()
-        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0.0 s – 0.6 s")
+        rule.onNodeWithTag(SECOND_LABEL_TAG).assertTextEquals("0:00 → 0:01")
         rule.onNodeWithTag(CONFIRM_SECOND_TAG).performClick()
         assertEquals(SecondWindow(0, 600), confirmed)
     }

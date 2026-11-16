@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -181,9 +182,17 @@ class MainActivity : ComponentActivity() {
                         ReminderSettingsScreen(onBack = { showSettings = false }, modifier = safeArea)
                     } else if (picking != null) {
                         BackHandler { days.cancel() }
+                        // The frames of the strip are read off the main thread; blank tiles show until they are there.
+                        val stripFrames by produceState(emptyList<ImageBitmap?>(), picking.videoUri) {
+                            val times = stripFrameTimes(picking.video.durationMs, STRIP_FRAME_COUNT)
+                            value = withContext(Dispatchers.IO) { readStrip(this@MainActivity, Uri.parse(picking.videoUri), times) }
+                        }
                         SecondPickerScreen(
+                            date = picking.date,
+                            author = MemberPrefs.of(this@MainActivity).name(),
                             video = picking.video,
                             initialWindow = picking.window,
+                            stripFrames = stripFrames,
                             onConfirm = { window ->
                                 scope.launch {
                                     val frame = withContext(Dispatchers.IO) {
@@ -198,8 +207,13 @@ class MainActivity : ComponentActivity() {
                                     if (!notSaved) syncScope.launch { journal.pushPending() }
                                 }
                             },
-                            onCancel = days::cancel,
-                            player = { window, modifier -> LoopingSecondPlayer(picking.videoUri, window, modifier) },
+                            // Another video for the same day: the picker closes and the video chooser opens on that day.
+                            onOtherVideo = {
+                                days.cancel()
+                                fillDay(picking.date)
+                            },
+                            onBack = days::cancel,
+                            player = { window, playing, modifier -> LoopingSecondPlayer(picking.videoUri, window, playing, modifier) },
                             modifier = safeArea,
                         )
                     } else {
