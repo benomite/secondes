@@ -121,6 +121,16 @@ const val POLAROID_PHOTO_TAG = "polaroid-photo"
  */
 @Composable
 fun Polaroid(index: Int, modifier: Modifier = Modifier, caption: String? = null, photo: @Composable BoxScope.() -> Unit) {
+    Polaroid(index, modifier, footer = {
+        if (caption != null) {
+            Text(caption, color = Palette.ToFillText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 4.dp))
+        }
+    }, photo = photo)
+}
+
+/** A [Polaroid] whose bottom margin holds [footer], drawn by the caller. */
+@Composable
+fun Polaroid(index: Int, modifier: Modifier = Modifier, footer: @Composable BoxScope.() -> Unit, photo: @Composable BoxScope.() -> Unit) {
     val rotation = polaroidRotation(index)
     Column(
         modifier = modifier
@@ -131,11 +141,7 @@ fun Polaroid(index: Int, modifier: Modifier = Modifier, caption: String? = null,
             .padding(start = PolaroidFrame, top = PolaroidFrame, end = PolaroidFrame),
     ) {
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).testTag(POLAROID_PHOTO_TAG), content = photo)
-        Box(modifier = Modifier.fillMaxWidth().height(PolaroidBottomMargin), contentAlignment = Alignment.CenterStart) {
-            if (caption != null) {
-                Text(caption, color = Palette.ToFillText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 4.dp))
-            }
-        }
+        Box(modifier = Modifier.fillMaxWidth().height(PolaroidBottomMargin), contentAlignment = Alignment.CenterStart, content = footer)
     }
 }
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">secondes</string>
-    <string name="import_videos">Importer des vidéos de Google Photos</string>
+    <string name="import_videos">Importer des vidéos</string>
     <string name="import_reading">Lecture des vidéos choisies…</string>
     <string name="import_preview">Aperçu : chaque vidéo est sur le jour où elle a été filmée. Rien n\'est enregistré avant que tu confirmes.</string>
     <string name="import_confirm">Confirmer l\'import</string>
@@ -58,6 +58,19 @@
     <string name="second_short_video">Cette vidéo dure moins d\'une seconde : le jour durera %1$s.</string>
     <string name="second_cancel">Annuler</string>
     <string name="second_confirm">Garder cette seconde</string>
-    <string name="calendar_missing_days">Jours manquants : %1$d</string>
+    <string name="calendar_year">Notre année %1$d</string>
+    <string name="calendar_previous_month">Mois précédent</string>
+    <string name="calendar_next_month">Mois suivant</string>
+    <string name="calendar_to_fill">à remplir</string>
+    <string name="calendar_today">auj.</string>
+    <string-array name="calendar_weekdays">
+        <item>lu</item>
+        <item>ma</item>
+        <item>me</item>
+        <item>je</item>
+        <item>ve</item>
+        <item>sa</item>
+        <item>di</item>
+    </string-array>
     <string name="calendar_not_sent">Pas envoyé</string>
 </resources>

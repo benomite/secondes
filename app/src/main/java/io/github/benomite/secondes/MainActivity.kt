@@ -22,9 +22,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +35,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -207,79 +203,77 @@ class MainActivity : ComponentActivity() {
                             modifier = safeArea,
                         )
                     } else {
-                        // The list below scrolls under the navigation bar: it takes the bottom inset as its own end padding.
-                        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp)) {
-                            if (importing != null) {
-                                BackHandler { days.cancelImport() }
-                                Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-                                    ImportPreviewPanel(
-                                        plan = importing,
-                                        existing = journalClips(journalDays.values, days.picks).associate { it.date to it.thumbnail },
-                                        onChoose = days::chooseForImport,
-                                        onConfirm = {
-                                            // The chosen days are saved here, signed with this member's name, then sent.
-                                            val author = MemberPrefs.of(this@MainActivity).name()
-                                            if (author == null) {
-                                                showSettings = true
-                                            } else {
-                                                val saved = days.confirmImport(journal, author)
-                                                if (saved != null) {
-                                                    notSaved = !saved
-                                                    syncScope.launch { journal.pushPending() }
-                                                }
-                                            }
-                                        },
-                                        onCancel = days::cancelImport,
-                                    )
+                        if (importing != null) BackHandler { days.cancelImport() }
+                        // The journal's days, this member's and the others', each in its author's color; during an
+                        // import, with the previewed videos on their days.
+                        JournalCalendarScreen(
+                            clips = days.clips(journalDays.values, MemberPrefs.of(this@MainActivity).name().orEmpty()),
+                            today = today,
+                            // Not during an import preview: the days are being chosen there.
+                            onPlay = { clip ->
+                                if (importing == null) {
+                                    val day = journalDays[clip.date]
+                                    if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
+                                        // A day of this member's reopens its video, on its second, to choose another one.
+                                        pickSecond(clip.date, day.clip.videoUri)
+                                    } else {
+                                        // A day filled by another member is replaced by a video picked here.
+                                        fillDay(clip.date)
+                                    }
                                 }
-                            } else {
-                                Column(modifier = Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                            },
+                            // An empty day takes the single video picked for it, as the user's explicit choice.
+                            onFill = { if (importing == null) fillDay(it) },
+                            previewDays = importing?.byDay?.keys.orEmpty(),
+                            modifier = safeArea.padding(horizontal = 16.dp),
+                            top = {
+                                if (importing != null) {
+                                    Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                                        ImportPreviewPanel(
+                                            plan = importing,
+                                            existing = journalClips(journalDays.values, days.picks).associate { it.date to it.thumbnail },
+                                            onChoose = days::chooseForImport,
+                                            onConfirm = {
+                                                // The chosen days are saved here, signed with this member's name, then sent.
+                                                val author = MemberPrefs.of(this@MainActivity).name()
+                                                if (author == null) {
+                                                    showSettings = true
+                                                } else {
+                                                    val saved = days.confirmImport(journal, author)
+                                                    if (saved != null) {
+                                                        notSaved = !saved
+                                                        syncScope.launch { journal.pushPending() }
+                                                    }
+                                                }
+                                            },
+                                            onCancel = days::cancelImport,
+                                        )
+                                    }
+                                }
+                            },
+                            bottom = {
+                                if (notSaved) Text(stringResource(R.string.day_not_saved))
+                                if (readingImport) Text(stringResource(R.string.import_reading))
+                                message?.let { Text(stringResource(it)) }
+                                if (importing == null) {
+                                    HomeActions(
                                         // The system photo picker, restricted to videos: Google Photos' library shows there when it is the phone's cloud media app.
                                         // A member with no name yet types it first: the imported days are signed with it.
-                                        PrimaryButton(enabled = !readingImport, onClick = {
+                                        onImport = {
                                             message = null
                                             if (MemberPrefs.of(this@MainActivity).name() == null) {
                                                 showSettings = true
                                             } else {
                                                 picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                                             }
-                                        }) { Text(stringResource(R.string.import_videos)) }
-                                        TextButton(onClick = { showSettings = true }) { Text(stringResource(R.string.settings)) }
-                                    }
-                                    // On its own line: the import button's label already takes most of the row.
-                                    TextButton(onClick = { showExport = true }) { Text(stringResource(R.string.export_open)) }
-                                    if (readingImport) Text(stringResource(R.string.import_reading))
-                                    message?.let { Text(stringResource(it)) }
+                                        },
+                                        onFilm = { showExport = true },
+                                        onSettings = { showSettings = true },
+                                        importEnabled = !readingImport,
+                                    )
                                 }
-                            }
-                            if (notSaved) Text(stringResource(R.string.day_not_saved))
-                            // The journal's days, this member's and the others', each with its author's name; during
-                            // an import, with the previewed videos on their days.
-                            JournalCalendarScreen(
-                                year = today.year,
-                                clips = days.clips(journalDays.values, MemberPrefs.of(this@MainActivity).name().orEmpty()),
-                                firstDay = today,
-                                today = today,
-                                // Not during an import preview: the days are being chosen there.
-                                onPlay = { clip ->
-                                    if (importing == null) {
-                                        val day = journalDays[clip.date]
-                                        if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
-                                            // A day of this member's reopens its video, on its second, to choose another one.
-                                            pickSecond(clip.date, day.clip.videoUri)
-                                        } else {
-                                            // A day filled by another member is replaced by a video picked here.
-                                            fillDay(clip.date)
-                                        }
-                                    }
-                                },
-                                // An empty day takes the single video picked for it, as the user's explicit choice.
-                                onFill = { if (importing == null) fillDay(it) },
-                                previewDays = importing?.byDay?.keys.orEmpty(),
-                                bottomInset = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding(),
-                            )
-                        }
+                            },
+                        )
                     }
     }
 

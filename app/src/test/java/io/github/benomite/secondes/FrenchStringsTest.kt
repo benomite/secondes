@@ -22,7 +22,9 @@ class FrenchStringsTest {
     fun aFrenchPhoneGetsFrenchScreensAndNotification() {
         val fr = inLanguage(Locale.FRENCH)
         assertEquals("Choisis la seconde", fr.getString(R.string.second_title))
-        assertEquals("Jours manquants : 3", fr.getString(R.string.calendar_missing_days, 3))
+        assertEquals("Notre année 2026", fr.getString(R.string.calendar_year, 2026))
+        assertEquals("Importer des vidéos", fr.getString(R.string.import_videos))
+        assertEquals("Le film de l'année", fr.getString(R.string.export_open))
         assertEquals("Ton journal prend du retard", fr.getString(R.string.behind_title))
         assertEquals("4 jours manquent", fr.resources.getQuantityString(R.plurals.behind_text, 4, 4))
         assertEquals("Film de l'année", fr.getString(R.string.export_title))
