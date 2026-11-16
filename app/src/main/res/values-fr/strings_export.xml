@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="export_open">Film de l\'année</string>
+    <string name="export_open">Le film de l\'année</string>
     <string name="export_title">Film de l\'année</string>
     <string name="export_clip_count">Jours avec un extrait : %1$d</string>
     <string name="export_date_overlay">Afficher la date sur chaque seconde</string>

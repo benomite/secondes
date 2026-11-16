@@ -2,6 +2,7 @@ package io.github.benomite.secondes
 
 import androidx.compose.ui.graphics.ImageBitmap
 import java.time.LocalDate
+import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -17,43 +18,60 @@ class JournalCalendarTest {
     private val thumb = ImageBitmap(1, 1)
     private fun clip(d: LocalDate) = Clip(d, "Léa", thumb)
     private val jan1 = LocalDate.of(2026, 1, 1)
+    private val january = YearMonth.of(2026, 1)
+    private val nov16 = LocalDate.of(2026, 11, 16)
 
     @Test
-    fun hasTwelveMonthsWithTheirDays() {
-        val months = calendarMonths(2026, emptyList())
-        assertEquals(12, months.size)
-        assertEquals(28, months[1].days.size)
-        assertEquals(365, months.sumOf { it.days.size })
+    fun aMonthHasItsDays() {
+        assertEquals(28, calendarMonth(YearMonth.of(2026, 2), emptyList(), nov16).days.size)
+        assertEquals(30, calendarMonth(YearMonth.of(2026, 11), emptyList(), nov16).days.size)
+        assertEquals(LocalDate.of(2026, 11, 30), calendarMonth(YearMonth.of(2026, 11), emptyList(), nov16).days.last().date)
     }
 
     @Test
     fun filledDaysCarryTheirClipAndEmptyDaysDoNot() {
-        val months = calendarMonths(2026, listOf(clip(jan1)))
-        assertNotNull(months[0].days[0].clip)
-        assertEquals("Léa", months[0].days[0].clip?.author)
-        assertNull(months[0].days[1].clip)
+        val month = calendarMonth(january, listOf(clip(jan1)), nov16)
+        assertNotNull(month.days[0].clip)
+        assertEquals("Léa", month.days[0].clip?.author)
+        assertNull(month.days[1].clip)
     }
 
     @Test
-    fun countsMissingDaysUpToToday() {
-        assertEquals(2, missingDayCount(listOf(clip(jan1)), jan1, LocalDate.of(2026, 1, 3)))
+    fun eachDayHasItsStateSeenFromToday() {
+        val month = calendarMonth(YearMonth.of(2026, 11), listOf(clip(LocalDate.of(2026, 11, 3)), clip(LocalDate.of(2026, 11, 16))), LocalDate.of(2026, 11, 16))
+        assertEquals(DayState.TO_FILL, month.days[1].state)
+        assertEquals(DayState.FILLED, month.days[2].state)
+        assertEquals(DayState.FILLED, month.days[15].state)
+        assertEquals(DayState.FUTURE, month.days[16].state)
+        assertEquals(DayState.TODAY, calendarMonth(YearMonth.of(2026, 11), emptyList(), nov16).days[15].state)
     }
 
     @Test
-    fun noMissingDaysWhenEveryDayIsFilled() {
+    fun countsTheDaysToFillUpToToday() {
+        assertEquals(2, daysToFill(january, listOf(clip(jan1)), LocalDate.of(2026, 1, 3)))
+    }
+
+    @Test
+    fun noDayToFillWhenEveryDayIsFilled() {
         val clips = (1..3).map { clip(LocalDate.of(2026, 1, it)) }
-        assertEquals(0, missingDayCount(clips, jan1, LocalDate.of(2026, 1, 3)))
+        assertEquals(0, daysToFill(january, clips, LocalDate.of(2026, 1, 3)))
     }
 
     @Test
-    fun journalStartingTodayMissesOnlyTodayUntilFilled() {
-        assertEquals(1, missingDayCount(emptyList(), jan1, jan1))
-        assertEquals(0, missingDayCount(listOf(clip(jan1)), jan1, jan1))
+    fun todayCountsUntilItIsFilled() {
+        assertEquals(1, daysToFill(january, emptyList(), jan1))
+        assertEquals(0, daysToFill(january, listOf(clip(jan1)), jan1))
     }
 
     @Test
-    fun daysOutsideTheJournalAreNotMissing() {
+    fun daysOfOtherMonthsAreNotCounted() {
         val clips = listOf(clip(LocalDate.of(2025, 12, 31)), clip(LocalDate.of(2026, 2, 1)))
-        assertEquals(1, missingDayCount(clips, jan1, jan1))
+        assertEquals(1, daysToFill(january, clips, jan1))
+    }
+
+    @Test
+    fun aPastMonthCountsAllItsEmptyDaysAndAMonthToComeNone() {
+        assertEquals(30, daysToFill(january, listOf(clip(jan1)), nov16))
+        assertEquals(0, daysToFill(YearMonth.of(2026, 12), emptyList(), nov16))
     }
 }
