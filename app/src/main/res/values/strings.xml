@@ -53,9 +53,14 @@
     <string name="access_lost_text">The folder \"%1$s\" can no longer be opened: it was deleted, or it is no longer shared with you. Join a journal or create a new one.</string>
     <string name="second_title">Choose the second</string>
     <string name="second_value">%1$.1f s</string>
-    <string name="second_range">%1$s – %2$s</string>
+    <string name="second_range">%1$s → %2$s</string>
+    <string name="second_hint">Drag the frame to the right moment</string>
+    <string name="second_sound">with sound</string>
+    <string name="second_play">Play</string>
+    <string name="second_strip">Second of the video</string>
+    <string name="second_caption">%1$s · %2$s</string>
     <string name="second_short_video">This video is shorter than one second: the day will last %1$s.</string>
-    <string name="second_cancel">Cancel</string>
+    <string name="second_cancel">Choose another video</string>
     <string name="second_confirm">Use this second</string>
     <string name="calendar_year">Our year %1$d</string>
     <string name="calendar_previous_month">Previous month</string>

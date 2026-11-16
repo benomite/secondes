@@ -21,7 +21,7 @@ class FrenchStringsTest {
     @Test
     fun aFrenchPhoneGetsFrenchScreensAndNotification() {
         val fr = inLanguage(Locale.FRENCH)
-        assertEquals("Choisis la seconde", fr.getString(R.string.second_title))
+        assertEquals("Choisir la seconde", fr.getString(R.string.second_title))
         assertEquals("Notre année 2026", fr.getString(R.string.calendar_year, 2026))
         assertEquals("Importer des vidéos", fr.getString(R.string.import_videos))
         assertEquals("Le film de l'année", fr.getString(R.string.export_open))
