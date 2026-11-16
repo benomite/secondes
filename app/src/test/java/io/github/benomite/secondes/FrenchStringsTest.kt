@@ -27,7 +27,7 @@ class FrenchStringsTest {
         assertEquals("Le film de l'année", fr.getString(R.string.export_open))
         assertEquals("Ton journal prend du retard", fr.getString(R.string.behind_title))
         assertEquals("4 jours manquent", fr.resources.getQuantityString(R.plurals.behind_text, 4, 4))
-        assertEquals("Film de l'année", fr.getString(R.string.export_title))
+        assertEquals("Le film de l'année", fr.getString(R.string.export_title))
         assertEquals("0,5 s", fr.getString(R.string.second_value, 0.5))
     }
 

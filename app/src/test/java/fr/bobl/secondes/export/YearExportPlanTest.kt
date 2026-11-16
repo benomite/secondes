@@ -136,4 +136,32 @@ class YearExportPlanTest {
         assertEquals(listOf(jan1, mar9), readable)
         assertEquals(listOf(jan4), unreadable)
     }
+
+    @Test
+    fun theStatsCountEachMembersSecondsInJoinOrderAndTheEmptyDaysSoFar() {
+        val days = listOf(
+            JournalDay(LocalDate.of(2025, 12, 30), SharedClip("content://a", SecondWindow(0)), "Tom Durand"),
+            JournalDay(LocalDate.of(2026, 1, 1), SharedClip("content://b", SecondWindow(0)), "Léa Martin"),
+            JournalDay(LocalDate.of(2026, 1, 2), SharedClip("content://c", SecondWindow(0)), "Tom Durand"),
+            JournalDay(LocalDate.of(2026, 1, 4), SharedClip("content://d", SecondWindow(0)), "Tom Durand"),
+        )
+
+        val stats = yearStats(days, 2026, today = LocalDate.of(2026, 1, 10))
+
+        assertEquals(3, stats.seconds)
+        assertEquals(listOf(MemberShare("Tom", 1, 2), MemberShare("Léa", 2, 1)), stats.shares)
+        assertEquals(7, stats.emptyDays)
+        assertEquals(364, yearStats(days.take(2), 2025, today = LocalDate.of(2026, 3, 1)).emptyDays)
+        assertEquals(0, yearStats(days, 2027, today = LocalDate.of(2026, 1, 10)).emptyDays)
+    }
+
+    @Test
+    fun theLengthIsInMinutesAndSecondsAndTheDayReachedFollowsTheProgress() {
+        assertEquals("4 min 49", filmLength(289))
+        assertEquals("1 min 05", filmLength(65))
+        assertEquals("45 s", filmLength(45))
+        assertEquals(0, dayReached(0, 289))
+        assertEquals(180, dayReached(62, 289))
+        assertEquals(289, dayReached(100, 289))
+    }
 }
