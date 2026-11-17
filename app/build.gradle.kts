@@ -30,19 +30,8 @@ android {
         versionName = "$verMajor.$verMinor.$verPatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The shared journal's server, e.g. -Psecondes.journalBaseUrl=https://example.org/journal.
-        // Empty by default: no server is provisioned yet, so the days filled stay "not sent".
-        val journalBaseUrl = (findProperty("secondes.journalBaseUrl") as String?).orEmpty()
-        buildConfigField("String", "JOURNAL_BASE_URL", "\"${journalBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-
-        // Google Drive file picker credentials of the build's Google Cloud project (see the README), read from
-        // env vars or Gradle properties, never from committed files. Empty: 'Join a journal' says the picker
-        // is not set up in this build. Sign-in and folder creation need none: the Android OAuth client is
-        // matched by package name and signing certificate.
-        val googleApiKey = releaseSetting("SECONDES_GOOGLE_API_KEY").orEmpty()
-        val googleProjectNumber = releaseSetting("SECONDES_GOOGLE_PROJECT_NUMBER").orEmpty()
-        buildConfigField("String", "GOOGLE_API_KEY", "\"${googleApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-        buildConfigField("String", "GOOGLE_PROJECT_NUMBER", "\"${googleProjectNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        // The shared journal lives in a Google Drive folder the family owns; the Google Cloud settings it needs are
+        // committed in GoogleCloud.kt, never read from a build option or a local property.
     }
 
     // Signing key, read from env vars or Gradle properties, never from committed files.
@@ -83,7 +72,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     testOptions {

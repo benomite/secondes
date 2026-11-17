@@ -1,11 +1,9 @@
 package io.github.benomite.secondes
 
 import java.io.File
-import java.io.IOException
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -41,20 +39,6 @@ class JournalJsonTest {
         val badDate = encodeDay(day).put("date", "someday")
 
         listOf(noAuthor, blankAuthor, noClip, noStart, badDate).forEach { assertNull(it.toString(), decodeDay(it)) }
-        val array = "[${noAuthor}, ${encodeDay(day)}, ${noClip}]"
-        assertEquals(listOf(day.copy(pending = false)), decodeDays(array))
-    }
-
-    @Test
-    fun aServerAnswerThatIsNotAListFailsTheCall() {
-        assertThrows(IOException::class.java) { decodeDays("<html>") }
-    }
-
-    @Test
-    fun withNoServerConfiguredEveryCallFailsAndTheDaysStayPending() {
-        val remote = HttpRemoteJournal("")
-        assertThrows(IOException::class.java) { remote.fetchDays() }
-        assertThrows(IOException::class.java) { remote.pushDay(day) }
     }
 
     @Test
