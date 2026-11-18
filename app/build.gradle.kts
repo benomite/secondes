@@ -23,7 +23,7 @@ fun googleSetting(name: String): String =
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-val versionRegex =Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
+val versionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
 val rawVersion = releaseSetting("SECONDES_VERSION") ?: "0.1.0"
 val versionMatch = versionRegex.matchEntire(rawVersion.trim())
     ?: throw GradleException("SECONDES_VERSION must look like v1.2.0 or 1.2.0, got '$rawVersion'")
