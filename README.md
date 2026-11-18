@@ -14,6 +14,35 @@ Installing a newer APK over the previous one keeps your journal and your sign-in
 
 The official build is published by the chef (the repository owner) under their own Google Cloud project. If you build the app yourself, it is not covered by that project: you need your own Google credentials (see below).
 
+## Share the journal with your family
+
+The shared journal is a folder in the Google Drive of one member of the family. secondes has no server: the app only reads and writes that folder, with the `drive.file` access (the files it created or that you picked, nothing else of your Drive).
+
+1. **One member creates the journal.** Open the app, tap *Sign in with Google*, then *Create a journal*. The app creates a folder named `secondes` in your Drive.
+2. **Share the folder.** On the next screen, tap *Open the folder in Drive* and share the folder with the Google account of each other member, as **editor**.
+3. **Each other member joins.** On their own phone, open the app, tap *Sign in with Google*, then *Join a journal*, and pick the shared folder in Google's picker.
+4. **Each member types their name** in the settings: the days they fill are signed with it.
+
+The days are sent when the app opens and as soon as a day is filled. Without network, a day stays on the phone, marked *Not sent*, and goes at the next sync. Opening the app brings the other members' days.
+
+### Read the journal without the app
+
+The folder holds one plain JSON file per member per day, named `<date> <name>.json`, for example `2026-11-17 Léa.json`:
+
+```json
+{
+  "date": "2026-11-17",
+  "author": "Léa",
+  "clip": {
+    "videoUri": "content:\/\/media\/picker\/0\/com.android.providers.media.photopicker\/media\/1000000042",
+    "startMs": 4000,
+    "endMs": 5000
+  }
+}
+```
+
+To read it by hand: open the folder in Google Drive (or download it, *Download* gives a zip), and open a file with any text editor. `date` is the day, `author` the member who filled it, `startMs` and `endMs` the chosen second, in milliseconds from the start of the video. `videoUri` points to the video on the author's phone (`\/` is an escaped `/`): find that video in the author's Google Photos by its date, and the second at `startMs`. When two members filled the same day, the app shows the file modified last.
+
 ## Build it yourself
 
 ### Prerequisites
@@ -33,7 +62,21 @@ Create your own Google Cloud project in the [Google Cloud console](https://conso
 
 ### Where the credentials go
 
-Today the Android app in `app/` reads no Google credential: there is no client ID, key or setting in `app/build.gradle.kts`, in the sources or in `local.properties`, and the Photos Picker it uses needs no sign-in. The only place that takes credentials is the Drive folder picker prototype, `prototypes/drive-picker/index.html`: you paste the OAuth client ID (type *Web application*, with `http://localhost:8000` as authorized JavaScript origin), the API key and the project number into its three fields; nothing is stored in the code. See `prototypes/README.md` for the full procedure. This section will be updated when the app itself reads credentials.
+The Drive folder picker (*Join a journal*) needs two values, which are never committed to the repository:
+
+- `SECONDES_PICKER_API_KEY`: the API key of step 5;
+- `SECONDES_GOOGLE_PROJECT_NUMBER`: the project number of step 1.
+
+The build reads each one from an environment variable, a Gradle property (`-P` or `~/.gradle/gradle.properties`) or the uncommitted `local.properties` at the root of the repository, for example:
+
+```properties
+SECONDES_PICKER_API_KEY=<your API key>
+SECONDES_GOOGLE_PROJECT_NUMBER=<your project number>
+```
+
+The release workflow (`.github/workflows/release.yml`) takes them from the repository secrets of the same names: a fork that publishes its own APK adds these two secrets. Without them, the app still builds and works, and *Join a journal* says the picker is not set up in this build. The API key ends up in the APK, where it can be read: keep it restricted to the Picker API.
+
+Sign-in needs no client ID in the code: the OAuth client of step 4 is of type *Android*, with the package name `io.github.benomite.secondes` and the SHA-1 of the certificate your APK is signed with, and Google matches it by those.
 
 ### Build the APK
 

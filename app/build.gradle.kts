@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -10,6 +12,16 @@ plugins {
 // Local default when nothing is set: 0.1.0 (versionCode 100).
 fun releaseSetting(name: String): String? =
     (System.getenv(name) ?: providers.gradleProperty(name).orNull)?.takeIf { it.isNotBlank() }
+
+// Google Cloud values of the Drive folder picker: env var, Gradle property, then local.properties (never committed).
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) file.inputStream().use { load(it) }
+}
+fun googleSetting(name: String): String =
+    releaseSetting(name) ?: localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() } ?: ""
+fun buildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 val versionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
 val rawVersion = releaseSetting("SECONDES_VERSION") ?: "0.1.0"
@@ -30,19 +42,12 @@ android {
         versionName = "$verMajor.$verMinor.$verPatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The shared journal's server, e.g. -Psecondes.journalBaseUrl=https://example.org/journal.
-        // Empty by default: no server is provisioned yet, so the days filled stay "not sent".
-        val journalBaseUrl = (findProperty("secondes.journalBaseUrl") as String?).orEmpty()
-        buildConfigField("String", "JOURNAL_BASE_URL", "\"${journalBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-
-        // Google Drive file picker credentials of the build's Google Cloud project (see the README), read from
-        // env vars or Gradle properties, never from committed files. Empty: 'Join a journal' says the picker
-        // is not set up in this build. Sign-in and folder creation need none: the Android OAuth client is
-        // matched by package name and signing certificate.
-        val googleApiKey = releaseSetting("SECONDES_GOOGLE_API_KEY").orEmpty()
-        val googleProjectNumber = releaseSetting("SECONDES_GOOGLE_PROJECT_NUMBER").orEmpty()
-        buildConfigField("String", "GOOGLE_API_KEY", "\"${googleApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-        buildConfigField("String", "GOOGLE_PROJECT_NUMBER", "\"${googleProjectNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        // The Drive folder picker ('Join a journal') needs the Picker API key and the Google Cloud project number.
+        // They are never committed: the release workflow passes them from repository secrets, a local or forked
+        // build from env vars, Gradle properties or local.properties. Missing, they are empty and the app says the
+        // picker is not set up in this build; everything else builds and works.
+        buildConfigField("String", "PICKER_API_KEY", buildConfigString(googleSetting("SECONDES_PICKER_API_KEY")))
+        buildConfigField("String", "GOOGLE_PROJECT_NUMBER", buildConfigString(googleSetting("SECONDES_GOOGLE_PROJECT_NUMBER")))
     }
 
     // Signing key, read from env vars or Gradle properties, never from committed files.

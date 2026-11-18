@@ -40,7 +40,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +60,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
     // Held by the activity, not the composition, so the notification's tap can close an open second picker.
     private val days = DayPicks()
 
-    // The shared journal: kept on the phone first, sent to the server and brought from it outside the screen.
+    // The shared journal: kept on the phone first, sent to the family's Drive folder and brought from it outside the screen.
     private lateinit var journal: JournalSync
     private val syncScope = MainScope()
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -84,10 +84,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // The app draws behind the system bars; each screen keeps its controls clear of them with the insets.
         enableEdgeToEdge()
-        journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), HttpRemoteJournal(BuildConfig.JOURNAL_BASE_URL))
-        BehindReminderWorker.schedule(this)
         selection = JournalSelection(JournalPrefs.of(this))
         google = GoogleAuthorization(this)
+        // The days go to, and come from, the folder chosen on this phone, read at each call: none chosen yet, or no
+        // Google access granted without a screen, and they stay pending here.
+        val prefs = JournalPrefs.of(this)
+        val remote = DriveRemoteJournal(folderId = { prefs.stored()?.folderId }, token = ::driveToken)
+        journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), remote)
+        BehindReminderWorker.schedule(this)
         setContent {
             SecondesTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -183,9 +187,12 @@ class MainActivity : ComponentActivity() {
                     } else if (picking != null) {
                         BackHandler { days.cancel() }
                         // The frames of the strip are read off the main thread; blank tiles show until they are there.
-                        val stripFrames by produceState(emptyList<ImageBitmap?>(), picking.videoUri) {
+                        // (remember + LaunchedEffect rather than produceState: lint's ProduceStateDoesNotAssignValue
+                        // misread the assignment there and failed ./gradlew lint.)
+                        var stripFrames by remember(picking.videoUri) { mutableStateOf(emptyList<ImageBitmap?>()) }
+                        LaunchedEffect(picking.videoUri) {
                             val times = stripFrameTimes(picking.video.durationMs, STRIP_FRAME_COUNT)
-                            value = withContext(Dispatchers.IO) { readStrip(this@MainActivity, Uri.parse(picking.videoUri), times) }
+                            stripFrames = withContext(Dispatchers.IO) { readStrip(this@MainActivity, Uri.parse(picking.videoUri), times) }
                         }
                         SecondPickerScreen(
                             date = picking.date,
@@ -320,9 +327,11 @@ class MainActivity : ComponentActivity() {
                         !selection.created(folderId, JOURNAL_FOLDER_NAME) -> R.string.journal_not_saved
                         else -> null
                     }
+                    // The days filled before the folder existed go to it now.
+                    if (message == null) syncScope.launch { journal.syncOnOpen() }
                 }
                 StartAction.JOIN ->
-                    if (BuildConfig.GOOGLE_API_KEY.isBlank() || BuildConfig.GOOGLE_PROJECT_NUMBER.isBlank()) {
+                    if (!GoogleCloud.pickerSetUp) {
                         message = R.string.picker_not_set_up
                     } else {
                         pickerToken = token
@@ -357,11 +366,17 @@ class MainActivity : ComponentActivity() {
 
         val token = pickerToken
         if (token != null) {
-            DrivePickerScreen(token, BuildConfig.GOOGLE_API_KEY, BuildConfig.GOOGLE_PROJECT_NUMBER) { answer ->
+            DrivePickerScreen(token, GoogleCloud.PICKER_API_KEY, GoogleCloud.PROJECT_NUMBER) { answer ->
                 pickerToken = null
                 message = when (answer) {
                     is PickerAnswer.Picked ->
-                        if (selection.joined(answer.folderId, answer.name.ifBlank { answer.folderId })) null else R.string.journal_not_saved
+                        if (selection.joined(answer.folderId, answer.name.ifBlank { answer.folderId })) {
+                            // The family's days come in as soon as the folder is joined, and this phone's go out.
+                            syncScope.launch { journal.syncOnOpen() }
+                            null
+                        } else {
+                            R.string.journal_not_saved
+                        }
                     PickerAnswer.Cancelled -> null
                     PickerAnswer.Failed -> R.string.picker_failed
                 }
@@ -403,6 +418,16 @@ class MainActivity : ComponentActivity() {
         selection.accessChecked(journal, access)
     }
 
+    /**
+     * The Drive access token for the journal's sync, called off the main thread. Only an access Google grants
+     * without a screen: a sign-in or a consent to give fails with an [IOException], and the days stay pending.
+     */
+    private fun driveToken(): String =
+        when (val authorization = runBlocking { google.authorize() }) {
+            is DriveAuthorization.Granted -> authorization.accessToken
+            else -> throw IOException("no Google access to Drive without the sign-in screen")
+        }
+
     /** Opens the journal's folder in the Drive app, or the browser, where it is shared. */
     private fun openInDrive(journal: StoredJournal) {
         try {
@@ -414,7 +439,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Opening the app sends the days filled offline, then brings the other members' days.
+        // Opening the app sends the days filled offline to the family's Drive folder, then brings the other members' days.
         syncScope.launch { journal.syncOnOpen() }
         // While the app is open, the network coming back sends the days filled offline.
         val callback = object : ConnectivityManager.NetworkCallback() {

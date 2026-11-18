@@ -2,8 +2,6 @@ package io.github.benomite.secondes
 
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import org.json.JSONArray
@@ -40,59 +38,6 @@ fun decodeDay(json: JSONObject): JournalDay? {
         return null
     }
     return JournalDay(date, SharedClip(videoUri, window), author, json.optBoolean("pending", false))
-}
-
-/** The complete days of a JSON array; an incomplete day is left out. Throws [IOException] when [text] is not an array. */
-fun decodeDays(text: String): List<JournalDay> {
-    val array = try {
-        JSONArray(text)
-    } catch (e: JSONException) {
-        throw IOException("the journal is not a JSON array", e)
-    }
-    return (0 until array.length()).mapNotNull { i -> array.optJSONObject(i)?.let(::decodeDay) }
-}
-
-/**
- * The journal server over HTTP: `GET <base>/days` lists the days, `PUT <base>/days/<date>` writes one and
- * answers it as stored. The server keeps the last write of a day. With no [baseUrl] there is no server:
- * every call fails, and the days filled stay pending on the phone.
- */
-class HttpRemoteJournal(private val baseUrl: String) : RemoteJournal {
-    override fun fetchDays(): List<JournalDay> = decodeDays(request("GET", "days", null))
-
-    override fun pushDay(day: JournalDay): JournalDay {
-        val answer = request("PUT", "days/${day.date}", encodeDay(day).toString())
-        val stored = try {
-            decodeDay(JSONObject(answer))
-        } catch (e: JSONException) {
-            null
-        }
-        return stored ?: throw IOException("the server answered an incomplete day for ${day.date}")
-    }
-
-    private fun request(method: String, path: String, body: String?): String {
-        if (baseUrl.isBlank()) throw IOException("no journal server is configured")
-        val connection = URL("${baseUrl.trimEnd('/')}/$path").openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = method
-            connection.connectTimeout = TIMEOUT_MS
-            connection.readTimeout = TIMEOUT_MS
-            if (body != null) {
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.outputStream.use { it.write(body.toByteArray()) }
-            }
-            val code = connection.responseCode
-            if (code !in 200..299) throw IOException("$method $path answered HTTP $code")
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private companion object {
-        const val TIMEOUT_MS = 10_000
-    }
 }
 
 /**
