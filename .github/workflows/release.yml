@@ -36,8 +36,21 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/secondes.jks"
 
+      # The Drive folder picker ('Join a journal') needs these two values; they are never committed.
+      - name: Check Google Cloud secrets
+        env:
+          SECONDES_PICKER_API_KEY: ${{ secrets.SECONDES_PICKER_API_KEY }}
+          SECONDES_GOOGLE_PROJECT_NUMBER: ${{ secrets.SECONDES_GOOGLE_PROJECT_NUMBER }}
+        run: |
+          if [ -z "$SECONDES_PICKER_API_KEY" ] || [ -z "$SECONDES_GOOGLE_PROJECT_NUMBER" ]; then
+            echo "::error::Repository secrets SECONDES_PICKER_API_KEY and SECONDES_GOOGLE_PROJECT_NUMBER are needed"
+            exit 1
+          fi
+
       - name: Build signed release APK
         env:
+          SECONDES_PICKER_API_KEY: ${{ secrets.SECONDES_PICKER_API_KEY }}
+          SECONDES_GOOGLE_PROJECT_NUMBER: ${{ secrets.SECONDES_GOOGLE_PROJECT_NUMBER }}
           SECONDES_VERSION: ${{ github.event.release.tag_name }}
           SECONDES_KEYSTORE_PATH: ${{ runner.temp }}/secondes.jks
           SECONDES_KEYSTORE_PASSWORD: ${{ secrets.SECONDES_KEYSTORE_PASSWORD }}

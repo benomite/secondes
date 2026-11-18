@@ -62,7 +62,21 @@ Create your own Google Cloud project in the [Google Cloud console](https://conso
 
 ### Where the credentials go
 
-The app's Google Cloud settings are committed in `app/src/main/java/io/github/benomite/secondes/GoogleCloud.kt`, not read from a build option or `local.properties`, so the release APK works as is. They are the two values the Drive folder picker (*Join a journal*) needs: `PICKER_API_KEY`, the API key of step 5, and `PROJECT_NUMBER`, the project number of step 1. A build from your own project replaces these two values. Sign-in needs no client ID in the code: the OAuth client of step 4 is of type *Android*, with the package name `io.github.benomite.secondes` and the SHA-1 of the certificate your APK is signed with, and Google matches it by those.
+The Drive folder picker (*Join a journal*) needs two values, which are never committed to the repository:
+
+- `SECONDES_PICKER_API_KEY`: the API key of step 5;
+- `SECONDES_GOOGLE_PROJECT_NUMBER`: the project number of step 1.
+
+The build reads each one from an environment variable, a Gradle property (`-P` or `~/.gradle/gradle.properties`) or the uncommitted `local.properties` at the root of the repository, for example:
+
+```properties
+SECONDES_PICKER_API_KEY=<your API key>
+SECONDES_GOOGLE_PROJECT_NUMBER=<your project number>
+```
+
+The release workflow (`.github/workflows/release.yml`) takes them from the repository secrets of the same names: a fork that publishes its own APK adds these two secrets. Without them, the app still builds and works, and *Join a journal* says the picker is not set up in this build. The API key ends up in the APK, where it can be read: keep it restricted to the Picker API.
+
+Sign-in needs no client ID in the code: the OAuth client of step 4 is of type *Android*, with the package name `io.github.benomite.secondes` and the SHA-1 of the certificate your APK is signed with, and Google matches it by those.
 
 ### Build the APK
 

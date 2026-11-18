@@ -331,7 +331,7 @@ class MainActivity : ComponentActivity() {
                     if (message == null) syncScope.launch { journal.syncOnOpen() }
                 }
                 StartAction.JOIN ->
-                    if (GoogleCloud.PICKER_API_KEY.isBlank() || GoogleCloud.PROJECT_NUMBER.isBlank()) {
+                    if (!GoogleCloud.pickerSetUp) {
                         message = R.string.picker_not_set_up
                     } else {
                         pickerToken = token

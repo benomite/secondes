@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,7 +13,17 @@ plugins {
 fun releaseSetting(name: String): String? =
     (System.getenv(name) ?: providers.gradleProperty(name).orNull)?.takeIf { it.isNotBlank() }
 
-val versionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
+// Google Cloud values of the Drive folder picker: env var, Gradle property, then local.properties (never committed).
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) file.inputStream().use { load(it) }
+}
+fun googleSetting(name: String): String =
+    releaseSetting(name) ?: localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() } ?: ""
+fun buildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val versionRegex =Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
 val rawVersion = releaseSetting("SECONDES_VERSION") ?: "0.1.0"
 val versionMatch = versionRegex.matchEntire(rawVersion.trim())
     ?: throw GradleException("SECONDES_VERSION must look like v1.2.0 or 1.2.0, got '$rawVersion'")
@@ -30,8 +42,12 @@ android {
         versionName = "$verMajor.$verMinor.$verPatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The shared journal lives in a Google Drive folder the family owns; the Google Cloud settings it needs are
-        // committed in GoogleCloud.kt, never read from a build option or a local property.
+        // The Drive folder picker ('Join a journal') needs the Picker API key and the Google Cloud project number.
+        // They are never committed: the release workflow passes them from repository secrets, a local or forked
+        // build from env vars, Gradle properties or local.properties. Missing, they are empty and the app says the
+        // picker is not set up in this build; everything else builds and works.
+        buildConfigField("String", "PICKER_API_KEY", buildConfigString(googleSetting("SECONDES_PICKER_API_KEY")))
+        buildConfigField("String", "GOOGLE_PROJECT_NUMBER", buildConfigString(googleSetting("SECONDES_GOOGLE_PROJECT_NUMBER")))
     }
 
     // Signing key, read from env vars or Gradle properties, never from committed files.
@@ -72,6 +88,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

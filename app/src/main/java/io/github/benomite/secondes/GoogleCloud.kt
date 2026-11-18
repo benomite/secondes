@@ -1,14 +1,16 @@
 package io.github.benomite.secondes
 
 /**
- * The Google Cloud project of the official build, committed here so the APK of the GitHub release works as is, with
- * no build option and no local property. The Drive file picker, which lets a member join the family's folder,
- * needs the project's browser API key (restricted to the Picker API) and its project number; neither is a secret,
- * the page that shows the picker hands both to Google. Sign-in needs no client ID in the code: Google matches the
- * Android OAuth client by package name and signing certificate. A build from another Google Cloud project changes
- * these two values (see the README). Empty: 'Join a journal' says the picker is not set up in this build.
+ * The Google Cloud values the Drive file picker needs to let a member join the family's folder: the project's API key
+ * (restricted to the Picker API) and its project number. They are never committed: the build reads them from
+ * SECONDES_PICKER_API_KEY and SECONDES_GOOGLE_PROJECT_NUMBER (repository secrets for the release workflow; env vars,
+ * Gradle properties or local.properties for a local or forked build, see the README). Sign-in needs no client ID in
+ * the code: Google matches the Android OAuth client by package name and signing certificate. Empty: 'Join a journal'
+ * says the picker is not set up in this build.
  */
 object GoogleCloud {
-    const val PICKER_API_KEY = ""
-    const val PROJECT_NUMBER = ""
+    val PICKER_API_KEY: String = BuildConfig.PICKER_API_KEY
+    val PROJECT_NUMBER: String = BuildConfig.GOOGLE_PROJECT_NUMBER
+
+    val pickerSetUp: Boolean get() = PICKER_API_KEY.isNotBlank() && PROJECT_NUMBER.isNotBlank()
 }
