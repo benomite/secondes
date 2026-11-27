@@ -27,7 +27,14 @@ The days are sent when the app opens and as soon as a day is filled. Without net
 
 ### Read the journal without the app
 
-The folder holds one plain JSON file per member per day, named `<date> <name>.json`, for example `2026-11-17 Léa.json`:
+The folder holds, for each member and each day, two files with the same base name `<date> <name>`:
+
+- one clip, `<date> <name>.mp4`: the one-second video of the day. The clip is the second itself, so the days stay readable even if the app is no longer maintained;
+- one plain JSON file, `<date> <name>.json`, with the date, the member and the chosen second.
+
+For example, Léa's day of 17 November 2026 is `2026-11-17 Léa.mp4` and `2026-11-17 Léa.json`. `<name>` is the member's name as typed in the settings; the characters `\ / : * ? " < > |` and the control characters in it are replaced by `_`.
+
+The JSON file looks like this:
 
 ```json
 {
@@ -41,7 +48,20 @@ The folder holds one plain JSON file per member per day, named `<date> <name>.js
 }
 ```
 
-To read it by hand: open the folder in Google Drive (or download it, *Download* gives a zip), and open a file with any text editor. `date` is the day, `author` the member who filled it, `startMs` and `endMs` the chosen second, in milliseconds from the start of the video. `videoUri` points to the video on the author's phone (`\/` is an escaped `/`): find that video in the author's Google Photos by its date, and the second at `startMs`. When two members filled the same day, the app shows the file modified last.
+To read the journal by hand, without the app:
+
+1. Open the folder in Google Drive (or download it, *Download* gives a zip).
+2. Open the `.mp4` of the day to see the second: play it in the browser or in the Drive app.
+3. Open the `.json` of the same day with any text editor, for the date, the member and the other fields.
+
+The fields:
+
+- `date`: the day, as `yyyy-MM-dd`.
+- `author`: the member who filled the day.
+- `clip.startMs` and `clip.endMs`: the chosen second, the window from `startMs` to `endMs`, in milliseconds from the start of the video.
+- `clip.videoUri`: the address of the video on the author's phone (`\/` is an escaped `/`). It is only meaningful on the phone that picked the video; the readable clip is the `.mp4` next to the JSON file.
+
+When two members filled the same day, each has its own pair of files, and the app shows the JSON file modified last.
 
 ## Build it yourself
 
