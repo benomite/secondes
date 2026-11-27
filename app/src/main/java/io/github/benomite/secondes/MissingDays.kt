@@ -10,3 +10,10 @@ fun missingDays(filled: Set<LocalDate>, from: LocalDate, to: LocalDate): List<Lo
         .filterNot { it in filled }
         .toList()
 }
+
+/**
+ * The day the journal starts: its first filled day, by any member, or [today] while no day up to today is filled.
+ * The days before it are not late: they may be filled, but nothing asks for them.
+ */
+fun journalStart(filled: Collection<LocalDate>, today: LocalDate): LocalDate =
+    filled.minOrNull()?.takeIf { !it.isAfter(today) } ?: today

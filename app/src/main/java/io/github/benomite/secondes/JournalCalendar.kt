@@ -12,8 +12,11 @@ enum class DayState {
     /** A day with a clip. */
     FILLED,
 
-    /** A past day with no clip, still to fill. */
+    /** A past day with no clip, from the journal's start: still to fill. */
     TO_FILL,
+
+    /** A past day with no clip, before the journal's start (see [journalStart]): neutral, it may still be filled. */
+    BEFORE_START,
 
     /** Today, with no clip yet: to fill as well. */
     TODAY,
@@ -27,9 +30,10 @@ data class CalendarDay(val date: LocalDate, val clip: Clip?, val state: DayState
 
 data class CalendarMonth(val month: YearMonth, val days: List<CalendarDay>)
 
-/** The days of [month], each with its clip and its state seen from [today]. */
+/** The days of [month], each with its clip and its state seen from [today]; [clips] are the whole journal's. */
 fun calendarMonth(month: YearMonth, clips: Collection<Clip>, today: LocalDate): CalendarMonth {
     val byDate = clips.associateBy { it.date }
+    val start = journalStart(byDate.keys, today)
     return CalendarMonth(
         month,
         (1..month.lengthOfMonth()).map { d ->
@@ -39,6 +43,7 @@ fun calendarMonth(month: YearMonth, clips: Collection<Clip>, today: LocalDate): 
                 clip != null -> DayState.FILLED
                 date == today -> DayState.TODAY
                 date.isAfter(today) -> DayState.FUTURE
+                date.isBefore(start) -> DayState.BEFORE_START
                 else -> DayState.TO_FILL
             }
             CalendarDay(date, clip, state)
@@ -46,8 +51,13 @@ fun calendarMonth(month: YearMonth, clips: Collection<Clip>, today: LocalDate): 
     )
 }
 
-/** Number of days of [month] with no clip up to and including [today]: the past ones, and today while it is empty. */
+/**
+ * Number of days of [month] with no clip from the journal's start up to and including [today]: the past ones, and
+ * today while it is empty. The days before the start are not counted; [clips] are the whole journal's.
+ */
 fun daysToFill(month: YearMonth, clips: Collection<Clip>, today: LocalDate): Int {
-    val last = month.atEndOfMonth().let { if (it.isAfter(today)) today else it }
-    return missingDays(clips.map { it.date }.toSet(), month.atDay(1), last).size
+    val filled = clips.map { it.date }.toSet()
+    val first = maxOf(month.atDay(1), journalStart(filled, today))
+    val last = minOf(month.atEndOfMonth(), today)
+    return missingDays(filled, first, last).size
 }

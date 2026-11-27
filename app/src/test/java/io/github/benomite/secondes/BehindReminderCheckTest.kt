@@ -8,7 +8,7 @@ import org.junit.Test
 
 class BehindReminderCheckTest {
     private val start = LocalDate.of(2026, 1, 1)
-    private val today = LocalDate.of(2026, 1, 11)
+    private val today = LocalDate.of(2026, 1, 12)
     private val now = Instant.parse("2026-01-20T09:00:00Z")
 
     private class MemoryStore(
@@ -22,11 +22,11 @@ class BehindReminderCheckTest {
         }
     }
 
-    /** Jan 1..10 empty, Jan 11 filled: 10 empty days on Jan 11. */
-    private val journal = object : FilledDaysSource {
-        override fun filledDays() = setOf(today)
-        override fun journalStart() = start
-    }
+    /** Jan 1 filled, the journal's start; Jan 2..11 empty: 10 missed days on Jan 12. */
+    private val journal = FilledDaysSource { setOf(start) }
+
+    /** No journal chosen on this phone yet, or one whose file cannot be read. */
+    private val noJournal = FilledDaysSource { null }
 
     private val posted = mutableListOf<Int>()
 
@@ -67,8 +67,23 @@ class BehindReminderCheckTest {
     @Test
     fun noJournalYetSendsNothing() {
         val store = MemoryStore()
-        assertNull(check(store, source = NoJournalYet))
+        assertNull(check(store, source = noJournal))
         assertEquals(emptyList<Int>(), posted)
+    }
+
+    @Test
+    fun aJournalWithNoDayFilledYetSendsNothing() {
+        val store = MemoryStore(settings = ReminderSettings(threshold = 1))
+        assertNull(check(store, source = { emptySet() }))
+        assertEquals(emptyList<Int>(), posted)
+    }
+
+    @Test
+    fun theDaysBeforeTheFirstFilledDayOfAnyMemberAreNotAnnounced() {
+        // Jan 10 filled by another member: only Jan 11 is missed, Jan 1..9 are before the start.
+        val store = MemoryStore(settings = ReminderSettings(threshold = 1))
+        assertEquals(1, check(store, source = { setOf(LocalDate.of(2026, 1, 10)) }))
+        assertEquals(listOf(1), posted)
     }
 
     @Test

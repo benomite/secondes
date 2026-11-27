@@ -48,7 +48,10 @@ class FileLocalJournal(private val file: File) : LocalJournal {
     /** Set when an unreadable file could not be set aside: saving would overwrite it, so saves fail. */
     private var blocked = false
 
-    override fun load(): Map<LocalDate, JournalDay> {
+    override fun load(): Map<LocalDate, JournalDay> = read() ?: setAside()
+
+    /** The days in the file, empty when there is no file, or null when it cannot be read; nothing is moved. */
+    fun read(): Map<LocalDate, JournalDay>? {
         if (!file.exists()) return emptyMap()
         return try {
             val array = JSONArray(file.readText())
@@ -57,9 +60,9 @@ class FileLocalJournal(private val file: File) : LocalJournal {
                 day.date to day
             }
         } catch (e: IOException) {
-            setAside()
+            null
         } catch (e: JSONException) {
-            setAside()
+            null
         }
     }
 

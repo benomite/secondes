@@ -6,6 +6,7 @@ import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -38,7 +39,8 @@ class JournalCalendarTest {
 
     @Test
     fun eachDayHasItsStateSeenFromToday() {
-        val month = calendarMonth(YearMonth.of(2026, 11), listOf(clip(LocalDate.of(2026, 11, 3)), clip(LocalDate.of(2026, 11, 16))), LocalDate.of(2026, 11, 16))
+        val clips = listOf(clip(LocalDate.of(2026, 10, 1)), clip(LocalDate.of(2026, 11, 3)), clip(LocalDate.of(2026, 11, 16)))
+        val month = calendarMonth(YearMonth.of(2026, 11), clips, LocalDate.of(2026, 11, 16))
         assertEquals(DayState.TO_FILL, month.days[1].state)
         assertEquals(DayState.FILLED, month.days[2].state)
         assertEquals(DayState.FILLED, month.days[15].state)
@@ -73,5 +75,44 @@ class JournalCalendarTest {
     fun aPastMonthCountsAllItsEmptyDaysAndAMonthToComeNone() {
         assertEquals(30, daysToFill(january, listOf(clip(jan1)), nov16))
         assertEquals(0, daysToFill(YearMonth.of(2026, 12), emptyList(), nov16))
+    }
+
+    private val november = YearMonth.of(2026, 11)
+    private val dec1 = LocalDate.of(2026, 12, 1)
+
+    @Test
+    fun theJournalStartsOnItsFirstFilledDayOrTodayWhileNoneIsFilled() {
+        assertEquals(dec1, journalStart(emptyList(), dec1))
+        assertEquals(LocalDate.of(2026, 11, 20), journalStart(listOf(LocalDate.of(2026, 11, 24), LocalDate.of(2026, 11, 20)), dec1))
+    }
+
+    @Test
+    fun aJournalStartedWithNoDayFilledLeavesTheDaysBeforeTodayNeutral() {
+        val month = calendarMonth(november, emptyList(), dec1)
+        assertTrue(month.days.all { it.state == DayState.BEFORE_START })
+        assertEquals(0, daysToFill(november, emptyList(), dec1))
+        // Today, empty, is still to fill.
+        assertEquals(DayState.TODAY, calendarMonth(YearMonth.of(2026, 12), emptyList(), dec1).days[0].state)
+        assertEquals(1, daysToFill(YearMonth.of(2026, 12), emptyList(), dec1))
+    }
+
+    @Test
+    fun aDayFilledBeforeTheStartBecomesTheNewStart() {
+        val nov20 = LocalDate.of(2026, 11, 20)
+        val month = calendarMonth(november, listOf(clip(nov20)), dec1)
+        assertTrue(month.days.take(19).all { it.state == DayState.BEFORE_START })
+        assertEquals(DayState.FILLED, month.days[19].state)
+        assertTrue(month.days.drop(20).all { it.state == DayState.TO_FILL })
+        // Nov 21..30.
+        assertEquals(10, daysToFill(november, listOf(clip(nov20)), dec1))
+    }
+
+    @Test
+    fun theStartIsTheFirstDayFilledByAnyMember() {
+        val clips = listOf(clip(LocalDate.of(2026, 11, 24)), Clip(LocalDate.of(2026, 11, 20), "Tom", thumb))
+        val month = calendarMonth(november, clips, dec1)
+        assertEquals(DayState.BEFORE_START, month.days[18].state)
+        assertEquals(DayState.TO_FILL, month.days[20].state)
+        assertEquals(9, daysToFill(november, clips, dec1))
     }
 }
