@@ -159,7 +159,8 @@ fun ExportRoute(
             notice = null
             scope.launch {
                 state = try {
-                    // A day filled on another phone points to a video this phone cannot open: it is left out, and said so.
+                    // Every member's day plays from its clip brought from the family's folder; a day written before the
+                    // clips were there points to a video only its author's phone can open: it is left out, and said so.
                     val (readable, unreadable) = withContext(Dispatchers.IO) {
                         splitReadable(clips) { isReadable(context, it) }
                     }

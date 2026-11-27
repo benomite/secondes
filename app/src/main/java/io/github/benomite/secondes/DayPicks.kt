@@ -91,10 +91,12 @@ class DayPicks {
 
 /**
  * The journal's days as the calendar shows them, with their author and whether they are sent. A day shows the
- * thumbnail picked here for that same clip; a clip taken on another phone, or before the app was closed, shows
- * a black one.
+ * thumbnail picked here for that same clip, or for the second its clip was cut from; a clip taken on another
+ * phone, or before the app was closed, shows a black one.
  */
 fun journalClips(days: Collection<JournalDay>, picks: Map<LocalDate, DayPick>): List<Clip> = days.map { day ->
-    val pick = picks[day.date]?.takeIf { it.videoUri == day.clip.videoUri && it.window == day.clip.window }
+    val pick = picks[day.date]?.takeIf { pick ->
+        listOfNotNull(day.clip, day.clip.source).any { it.videoUri == pick.videoUri && it.window == pick.window }
+    }
     Clip(day.date, day.author, pick?.thumbnail ?: ImageBitmap(1, 1), pending = day.pending)
 }

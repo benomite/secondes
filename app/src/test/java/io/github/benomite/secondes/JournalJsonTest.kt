@@ -31,6 +31,31 @@ class JournalJsonTest {
     }
 
     @Test
+    fun aClipCutHereReadsBackWithTheSecondItWasCutFrom() {
+        val cut = day.copy(clip = SharedClip("file:/clips/abc.mp4", SecondWindow(0), day.clip))
+        assertEquals(cut, decodeDay(encodeDay(cut, withPending = true)))
+    }
+
+    @Test
+    fun theDaysFileInTheFolderPointsToItsClipNextToItAndNeverToTheAuthorsVideo() {
+        val cut = day.copy(clip = SharedClip("file:/clips/abc.mp4", SecondWindow(0), day.clip))
+        val json = encodeDayFile(cut)
+
+        assertEquals("2026-03-04 Alice.mp4", json.getJSONObject("clip").getString("file"))
+        assertEquals(setOf("file", "startMs", "endMs"), json.getJSONObject("clip").keys().asSequence().toSet())
+        assertEquals(DayFile(day.date, "Alice", "2026-03-04 Alice.mp4", SecondWindow(0)), decodeDayFile(json))
+    }
+
+    @Test
+    fun aDaysFileWithoutItsClipFileOrItsSecondIsLeftOut() {
+        val noFile = encodeDayFile(day).apply { getJSONObject("clip").remove("file") }
+        val noEnd = encodeDayFile(day).apply { getJSONObject("clip").remove("endMs") }
+        val noAuthor = encodeDayFile(day).apply { remove("author") }
+
+        listOf(noFile, noEnd, noAuthor, encodeDay(day)).forEach { assertNull(it.toString(), decodeDayFile(it)) }
+    }
+
+    @Test
     fun aDayWithoutItsAuthorOrItsClipIsLeftOut() {
         val noAuthor = encodeDay(day).apply { remove("author") }
         val blankAuthor = encodeDay(day).put("author", " ")

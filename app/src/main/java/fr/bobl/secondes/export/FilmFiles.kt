@@ -26,7 +26,10 @@ const val FILM_PROVIDER_SUFFIX = ".films"
 /** The folder of the gallery the films are saved in. */
 private const val GALLERY_FOLDER = "secondes"
 
-/** True when the video at [videoUri] can be opened on this phone; a video picked on another phone cannot. */
+/**
+ * True when the video at [videoUri] can be opened on this phone: a day's clip kept here always can, whoever filled
+ * it; a day written before the clips were in the family's folder names a video only its author's phone has.
+ */
 fun isReadable(context: Context, videoUri: String): Boolean = try {
     context.contentResolver.openFileDescriptor(Uri.parse(videoUri), "r")?.use { true } ?: false
 } catch (e: Exception) {

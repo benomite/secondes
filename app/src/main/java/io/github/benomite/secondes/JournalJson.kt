@@ -8,36 +8,78 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-/** A day as JSON: `{"date", "author", "clip": {"videoUri", "startMs", "endMs"}}`, plus `pending` when [withPending]. */
+/**
+ * A day as the phone keeps it: `{"date", "author", "clip": {"videoUri", "startMs", "endMs", "source"?}}`, `source`
+ * being the second the clip was cut from (same shape), plus `pending` when [withPending].
+ */
 fun encodeDay(day: JournalDay, withPending: Boolean = false): JSONObject = JSONObject()
+    .put("date", day.date.toString())
+    .put("author", day.author)
+    .put("clip", encodeClip(day.clip))
+    .apply { if (withPending) put("pending", day.pending) }
+
+private fun encodeClip(clip: SharedClip): JSONObject = JSONObject()
+    .put("videoUri", clip.videoUri)
+    .put("startMs", clip.window.startMs)
+    .put("endMs", clip.window.endMs)
+    .apply { clip.source?.let { put("source", encodeClip(it)) } }
+
+/** The day held by [json], or null when it lacks its date, its author or its clip: a day is never kept half-written. */
+fun decodeDay(json: JSONObject): JournalDay? {
+    val date = dateOf(json) ?: return null
+    val author = json.optString("author").takeIf { it.isNotBlank() } ?: return null
+    val clip = json.optJSONObject("clip")?.let(::decodeClip) ?: return null
+    return JournalDay(date, clip, author, json.optBoolean("pending", false))
+}
+
+private fun decodeClip(json: JSONObject): SharedClip? {
+    val videoUri = json.optString("videoUri").takeIf { it.isNotBlank() } ?: return null
+    val window = windowOf(json) ?: return null
+    // A source that cannot be read only loses the way back to the member's own video: the clip itself is whole.
+    return SharedClip(videoUri, window, json.optJSONObject("source")?.let(::decodeClip))
+}
+
+private fun dateOf(json: JSONObject): LocalDate? = try {
+    LocalDate.parse(json.optString("date"))
+} catch (e: DateTimeParseException) {
+    null
+}
+
+private fun windowOf(json: JSONObject): SecondWindow? {
+    if (!json.has("startMs") || !json.has("endMs")) return null
+    return try {
+        SecondWindow(json.getLong("startMs"), json.getLong("endMs"))
+    } catch (e: JSONException) {
+        null
+    }
+}
+
+/** A day as its JSON file in the family's folder holds it: its clip is the file [clipFile] next to it, played over [window]. */
+data class DayFile(val date: LocalDate, val author: String, val clipFile: String, val window: SecondWindow)
+
+/**
+ * The day's JSON file in the family's folder: `{"date", "author", "clip": {"file", "startMs", "endMs"}}`, `file` being
+ * the name of the day's clip next to it ([dayClipName]). It never names a video on the author's phone.
+ */
+fun encodeDayFile(day: JournalDay): JSONObject = JSONObject()
     .put("date", day.date.toString())
     .put("author", day.author)
     .put(
         "clip",
         JSONObject()
-            .put("videoUri", day.clip.videoUri)
+            .put("file", dayClipName(day.date, day.author))
             .put("startMs", day.clip.window.startMs)
             .put("endMs", day.clip.window.endMs),
     )
-    .apply { if (withPending) put("pending", day.pending) }
 
-/** The day held by [json], or null when it lacks its date, its author or its clip: a day is never kept half-written. */
-fun decodeDay(json: JSONObject): JournalDay? {
-    val date = try {
-        LocalDate.parse(json.optString("date"))
-    } catch (e: DateTimeParseException) {
-        return null
-    }
+/** The day of a JSON file of the family's folder, or null when it lacks its date, its author, its clip file or its second. */
+fun decodeDayFile(json: JSONObject): DayFile? {
+    val date = dateOf(json) ?: return null
     val author = json.optString("author").takeIf { it.isNotBlank() } ?: return null
     val clip = json.optJSONObject("clip") ?: return null
-    val videoUri = clip.optString("videoUri").takeIf { it.isNotBlank() } ?: return null
-    if (!clip.has("startMs") || !clip.has("endMs")) return null
-    val window = try {
-        SecondWindow(clip.getLong("startMs"), clip.getLong("endMs"))
-    } catch (e: JSONException) {
-        return null
-    }
-    return JournalDay(date, SharedClip(videoUri, window), author, json.optBoolean("pending", false))
+    val file = clip.optString("file").takeIf { it.isNotBlank() } ?: return null
+    val window = windowOf(clip) ?: return null
+    return DayFile(date, author, file, window)
 }
 
 /**

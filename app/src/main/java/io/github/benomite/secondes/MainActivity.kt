@@ -89,8 +89,11 @@ class MainActivity : ComponentActivity() {
         // The days go to, and come from, the folder chosen on this phone, read at each call: none chosen yet, or no
         // Google access granted without a screen, and they stay pending here.
         val prefs = JournalPrefs.of(this)
-        val remote = DriveRemoteJournal(folderId = { prefs.stored()?.folderId }, token = ::driveToken)
-        journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), remote)
+        // Each day's second is cut into its own clip, kept here and sent to the folder; the other members' clips
+        // are brought into the same place.
+        val clips = ClipFiles(File(filesDir, CLIPS_DIR), TransformerSecondCutter(this))
+        val remote = DriveRemoteJournal(folderId = { prefs.stored()?.folderId }, token = ::driveToken, clips = clips)
+        journal = JournalSync(FileLocalJournal(File(filesDir, JOURNAL_FILE)), remote, clips)
         BehindReminderWorker.schedule(this)
         setContent {
             SecondesTheme {
@@ -139,18 +142,23 @@ class MainActivity : ComponentActivity() {
 
                     var message by remember { mutableStateOf<Int?>(null) }
 
-                    // Opens the second picker on a day once the video is read; a photo or an unreadable video opens nothing and says so.
-                    fun pickSecond(date: LocalDate, videoUri: String) {
+                    // Opens the second picker on a day over the first of [videoUris] that reads; a photo or an
+                    // unreadable video opens nothing and says so.
+                    fun pickSecond(date: LocalDate, videoUris: List<String>) {
                         scope.launch {
-                            val uri = Uri.parse(videoUri)
-                            val notAVideo = withContext(Dispatchers.IO) { isNotAVideo(mimeTypeOf(this@MainActivity, uri)) }
-                            val video = if (notAVideo) null else withContext(Dispatchers.IO) { readVideoInfo(this@MainActivity, uri) }
-                            message = when {
-                                notAVideo -> R.string.not_a_video
-                                video == null -> R.string.video_unreadable
-                                else -> null
+                            var answer: Int? = R.string.video_unreadable
+                            for (videoUri in videoUris) {
+                                val uri = Uri.parse(videoUri)
+                                val notAVideo = withContext(Dispatchers.IO) { isNotAVideo(mimeTypeOf(this@MainActivity, uri)) }
+                                val video = if (notAVideo) null else withContext(Dispatchers.IO) { readVideoInfo(this@MainActivity, uri) }
+                                answer = if (notAVideo) R.string.not_a_video else R.string.video_unreadable
+                                if (video != null) {
+                                    answer = null
+                                    days.open(date, videoUri, video)
+                                    break
+                                }
                             }
-                            if (video != null) days.open(date, videoUri, video)
+                            message = answer
                         }
                     }
 
@@ -160,7 +168,7 @@ class MainActivity : ComponentActivity() {
                         dayToFill = null
                         // The day's video is read again by the film of the year, long after this app has closed.
                         uri?.let(::keepReadAccess)
-                        if (date != null && uri != null) pickSecond(date, uri.toString())
+                        if (date != null && uri != null) pickSecond(date, listOf(uri.toString()))
                     }
 
                     val journalDays by journal.days.collectAsState()
@@ -234,11 +242,13 @@ class MainActivity : ComponentActivity() {
                             onPlay = { clip ->
                                 if (importing == null) {
                                     val day = journalDays[clip.date]
-                                    if (day != null && day.author == MemberPrefs.of(this@MainActivity).name()) {
-                                        // A day of this member's reopens its video, on its second, to choose another one.
-                                        pickSecond(clip.date, day.clip.videoUri)
+                                    if (day != null) {
+                                        // A day plays its second, whoever filled it: the clip brought from the family's
+                                        // folder, or cut here. A day of this member's reopens the video it was cut from,
+                                        // to choose another second, while the phone still has it.
+                                        val mine = day.author == MemberPrefs.of(this@MainActivity).name()
+                                        pickSecond(clip.date, listOfNotNull(day.clip.source?.videoUri?.takeIf { mine }, day.clip.videoUri))
                                     } else {
-                                        // A day filled by another member is replaced by a video picked here.
                                         fillDay(clip.date)
                                     }
                                 }
@@ -490,6 +500,9 @@ class MainActivity : ComponentActivity() {
 
         /** The file, in the app's private files, where the journal's days are kept. */
         const val JOURNAL_FILE = "journal.json"
+
+        /** The folder, in the app's private files, where the days' one-second clips are kept ([ClipFiles]). */
+        const val CLIPS_DIR = "clips"
     }
 }
 

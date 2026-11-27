@@ -1,11 +1,13 @@
 package io.github.benomite.secondes
 
 import androidx.compose.ui.graphics.ImageBitmap
+import java.io.File
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -194,11 +196,12 @@ class BatchImportTest {
     private object OfflineJournal : RemoteJournal {
         override fun fetchDays(): List<JournalDay> = throw IOException("offline")
 
-        override fun pushDay(day: JournalDay): JournalDay = throw IOException("offline")
+        override fun pushDay(day: JournalDay, clip: File): JournalDay = throw IOException("offline")
     }
 
     private val local = ImportLocalJournal()
-    private val journal = JournalSync(local, OfflineJournal, Dispatchers.Unconfined)
+    private val clips = ClipFiles(createTempDirectory("clips").toFile(), FakeSecondCutter())
+    private val journal = JournalSync(local, OfflineJournal, clips, Dispatchers.Unconfined)
     private val oldClip = SharedClip("content://old", SecondWindow(3_000))
 
     /** Mar 4 already filled by Léa, from this phone, with its thumbnail. */
