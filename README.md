@@ -27,7 +27,9 @@ The days are sent when the app opens and as soon as a day is filled. Without net
 
 ### Read the journal without the app
 
-The folder holds one plain JSON file per member per day, named `<date> <name>.json`, for example `2026-11-17 Léa.json`:
+The folder holds one plain JSON file per member per day, named `<date> <name>.json`, for example `2026-11-17 Léa.json`. `<name>` is the member's name as typed in the settings; the characters `\ / : * ? " < > |` and the control characters in it are replaced by `_`.
+
+The JSON file looks like this:
 
 ```json
 {
@@ -41,7 +43,22 @@ The folder holds one plain JSON file per member per day, named `<date> <name>.js
 }
 ```
 
-To read it by hand: open the folder in Google Drive (or download it, *Download* gives a zip), and open a file with any text editor. `date` is the day, `author` the member who filled it, `startMs` and `endMs` the chosen second, in milliseconds from the start of the video. `videoUri` points to the video on the author's phone (`\/` is an escaped `/`): find that video in the author's Google Photos by its date, and the second at `startMs`. When two members filled the same day, the app shows the file modified last.
+The fields:
+
+- `date`: the day, as `yyyy-MM-dd`.
+- `author`: the member who filled the day.
+- `clip.startMs` and `clip.endMs`: the chosen second, the window from `startMs` to `endMs`, in milliseconds from the start of the video.
+- `clip.videoUri`: the address of the video on the author's phone (`\/` is an escaped `/`). It is only meaningful on the phone that picked the video.
+
+To read the journal by hand, without the app:
+
+1. Open the folder in Google Drive (or download it, *Download* gives a zip).
+2. Open the `.json` of the day with any text editor, for the date, the member and the chosen second.
+3. To see the second, find the video in the author's Google Photos by its date, and go to the second at `startMs`.
+
+The clip change (epic #71) makes the app also write, next to each JSON file, a one-second `<date> <name>.mp4` clip with the same base name. The app does not write this file yet: until it does, the folder holds only the JSON files, and step 3 is the way to see the second.
+
+When two members filled the same day, the app shows the JSON file modified last.
 
 ## Build it yourself
 
