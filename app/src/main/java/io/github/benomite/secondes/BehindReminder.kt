@@ -16,20 +16,20 @@ val REMINDER_MIN_INTERVAL: Duration = Duration.ofDays(7)
 
 /**
  * The number of empty days to announce, or null when no notification is due: the reminder is off,
- * the journal has fewer empty days than the threshold between [journalStart] and [today] (both included),
- * or the last one was sent less than a week before [now].
+ * the journal has fewer empty days than the threshold from its start (see [journalStart]) to the day before [today]
+ * — the days before the start, and today, are not missed —, or the last one was sent less than a week before [now].
+ * [filled] are the days filled by any member.
  */
 fun behindReminderDue(
     settings: ReminderSettings,
     filled: Set<LocalDate>,
-    journalStart: LocalDate,
     today: LocalDate,
     lastSentAt: Instant?,
     now: Instant,
 ): Int? {
     if (!settings.enabled || settings.threshold < 1) return null
     if (lastSentAt != null && Duration.between(lastSentAt, now) < REMINDER_MIN_INTERVAL) return null
-    val empty = missingDays(filled, journalStart, today).size
+    val empty = missingDays(filled, journalStart(filled, today), today.minusDays(1)).size
     return empty.takeIf { it >= settings.threshold }
 }
 
@@ -37,7 +37,7 @@ fun behindReminderDue(
  * One run of the daily check: reads [store] and [source], and when a notification is due hands the
  * number of empty days to [notify]. The send time is recorded only when [notify] says it was posted,
  * so a refused permission does not use up the week. Returns the number announced, or null.
- * Unreadable settings, or no journal yet, send nothing.
+ * Unreadable settings, no journal yet, or a journal that cannot be read send nothing.
  */
 fun runBehindReminderCheck(
     store: ReminderStore,
@@ -47,8 +47,8 @@ fun runBehindReminderCheck(
     notify: (emptyDays: Int) -> Boolean,
 ): Int? {
     val settings = store.settings() ?: return null
-    val start = source.journalStart() ?: return null
-    val empty = behindReminderDue(settings, source.filledDays(), start, today, store.lastSentAt(), now) ?: return null
+    val filled = source.filledDays() ?: return null
+    val empty = behindReminderDue(settings, filled, today, store.lastSentAt(), now) ?: return null
     if (!notify(empty)) return null
     store.recordSent(now)
     return empty

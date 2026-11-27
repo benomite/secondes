@@ -137,7 +137,9 @@ class JournalCalendarScreenTest {
     @Test
     fun theStampCountsTheDaysToFillShownOnTheMonth() {
         val today = LocalDate.of(2026, 11, 16)
-        val clips = listOf(3, 8, 9).map { Clip(LocalDate.of(2026, 11, it), "Léa", ImageBitmap(1, 1)) }
+        // The journal started in October: every day of November up to today counts.
+        val clips = listOf(Clip(LocalDate.of(2026, 10, 1), "Léa", ImageBitmap(1, 1))) +
+            listOf(3, 8, 9).map { Clip(LocalDate.of(2026, 11, it), "Léa", ImageBitmap(1, 1)) }
         rule.setContent { JournalCalendarScreen(clips, today, {}, {}) }
         // 16 days up to today, 3 filled: 12 dashed days and today, empty.
         rule.onNodeWithTag(TO_FILL_COUNT_TAG).assertTextEquals("13")
@@ -206,5 +208,33 @@ class JournalCalendarScreenTest {
         assertEquals("film", opened)
         rule.onNodeWithContentDescription("Settings").performClick()
         assertEquals("settings", opened)
+    }
+
+    @Test
+    fun aJournalStartedTodayShowsNoPastDayToFillYetEachCanStillBeFilled() {
+        val dec1 = LocalDate.of(2026, 12, 1)
+        var filled: LocalDate? = null
+        rule.setContent { JournalCalendarScreen(emptyList(), dec1, {}, { filled = it }) }
+        rule.onNodeWithContentDescription("Previous month").performClick()
+        rule.onNodeWithTag(MONTH_TITLE_TAG).assertTextEquals("November")
+        rule.onNodeWithTag(TO_FILL_COUNT_TAG).assertTextEquals("0")
+        (1..30).forEach { rule.onAllNodesWithTag(emptyDayTag(LocalDate.of(2026, 11, it))).assertCountEquals(0) }
+
+        val nov20 = LocalDate.of(2026, 11, 20)
+        rule.onNodeWithTag(beforeStartDayTag(nov20)).assertHasClickAction().performClick()
+        assertEquals(nov20, filled)
+    }
+
+    @Test
+    fun aDayFilledBeforeTheStartShowsFilledAndTheDaysAfterItAreToFill() {
+        val dec1 = LocalDate.of(2026, 12, 1)
+        val nov20 = LocalDate.of(2026, 11, 20)
+        // Filled by another member: the start is the first day filled by anyone.
+        rule.setContent { JournalCalendarScreen(listOf(Clip(nov20, "Tom", ImageBitmap(1, 1))), dec1, {}, {}) }
+        rule.onNodeWithContentDescription("Previous month").performClick()
+        rule.onNodeWithTag(filledDayTag(nov20)).assertIsDisplayed()
+        rule.onNodeWithTag(beforeStartDayTag(LocalDate.of(2026, 11, 19))).assertIsDisplayed()
+        rule.onNodeWithTag(emptyDayTag(LocalDate.of(2026, 11, 21))).assertIsDisplayed()
+        rule.onNodeWithTag(TO_FILL_COUNT_TAG).assertTextEquals("10")
     }
 }

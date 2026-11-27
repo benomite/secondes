@@ -63,6 +63,7 @@ fun filledDayTag(date: LocalDate) = "day-filled-$date"
 fun emptyDayTag(date: LocalDate) = "day-empty-$date"
 fun todayTag(date: LocalDate) = "day-today-$date"
 fun futureDayTag(date: LocalDate) = "day-future-$date"
+fun beforeStartDayTag(date: LocalDate) = "day-before-start-$date"
 fun thumbnailTag(date: LocalDate) = "thumbnail-$date"
 fun dayNumberTag(date: LocalDate) = "day-number-$date"
 fun notSentTag(date: LocalDate) = "not-sent-$date"
@@ -277,6 +278,16 @@ private fun DayCell(day: CalendarDay, previewed: Boolean, joinOrder: Map<String,
                 color = Palette.Ink,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp),
             )
+        }
+        // Before the journal's start: neutral, with no dashed frame, but a tap still fills it.
+        DayState.BEFORE_START -> Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(frame)
+                .testTag(beforeStartDayTag(day.date))
+                .clickable { onFill(day.date) },
+        ) {
+            DayNumber(number, Palette.Ink)
         }
         DayState.FUTURE -> Box(modifier = Modifier.fillMaxSize().testTag(futureDayTag(day.date))) {
             DayNumber(number, Palette.MutedText)

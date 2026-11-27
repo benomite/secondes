@@ -24,8 +24,9 @@ import java.util.concurrent.TimeUnit
 /** Once a day, posts the "falling behind" notification when [runBehindReminderCheck] says it is due. */
 class BehindReminderWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result = try {
-        // Integration point: NoJournalYet is replaced by the journal's FilledDaysSource once it is merged.
-        runBehindReminderCheck(ReminderPrefs.of(applicationContext), NoJournalYet, LocalDate.now(), Instant.now()) {
+        // The journal kept on this phone: every member's days, as last brought from the Drive folder.
+        val journal = StoredJournalDays.of(applicationContext)
+        runBehindReminderCheck(ReminderPrefs.of(applicationContext), journal, LocalDate.now(), Instant.now()) {
             postBehindReminder(applicationContext, it)
         }
         Result.success()
