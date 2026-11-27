@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo/secondes-logo.svg" alt="secondes logo" width="128"></p>
+
 # secondes
 
 secondes is an open source, serverless Android app that builds a shared video diary — one second per day, vertical — and exports the film of the year. One second a day, shared.

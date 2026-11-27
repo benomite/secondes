@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A polaroid with one dot in it: one second a day. Everything sits inside the 66dp safe zone. The holes are real holes, so the themed (monochrome) icon keeps the shape. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#22261F"
+        android:fillType="evenOdd"
+        android:pathData="M34,30 H74 V78 H34 Z M38,34 H70 V66 H38 Z M46,71 H62 V73 H46 Z M47,50 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+</vector>
